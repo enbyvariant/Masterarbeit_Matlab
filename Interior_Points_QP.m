@@ -1,4 +1,5 @@
 % Implementation of the Interior Points Method for LPs
+% jetzt auch in github
 
 function [x,y,v_1,v_2, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, x, y, v_1,v_2)
     
