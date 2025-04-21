@@ -1,0 +1,43 @@
+function [outputArg1,outputArg2] = Interior_Points_Init(H, A, c, xl, xu, x, y)
+%UNTITLED Summary of this function goes here
+%   Detailed explanation goes here
+    n = size(A, 2);
+    m = size(A, 1);
+    e = ones(n,1);
+    low = 0;
+    upper = 0;
+    if xl > 10^3
+        low = 1;
+        sl = rand(n,1);
+        wl = rand(n,1);
+        Sl1 = diag(ones(n,1)./sl);
+        Wl = diag(wl);
+    end
+    if xu < 10^3
+        upper = 1;
+        su = rand(n,1);
+        wu = rand(n,1);
+        Su1 = diag(ones(n,1)./su);
+        Wu = diag(wu);
+    end
+
+    mat = [H zeros(n,2*n) A' eye(n) -eye(n);
+        zeros(n) Sl1*Wl zeros(n,n+m) -eye(n) zeros(n); zeros(n,2*n) Su1*Wu zeros(n, m+n) -eye(n); A zeros(m,m+4*n); eye(n) -eye(n) zeros(m+3*n); -eye(n) zeros(n) -eye(n) zeros(m+2*n)];
+    omega = [H*x + c - A'*y -wl + wu + Sl1*Wl*(x -xl -sl) - Su1*Wu*(-x +xu -su) + Wl*e - Wu*e];
+    sol = linsolve(mat, omega);
+    del_x = sol(1:n);
+    del_sl = sol(n+1:2*n);
+    del_su = sol(2*n+1:3*n);
+    del_wl = sol(3*n+m+1:4*n+m);
+    del_wu = sol(4*n+m+1:5*n+m);
+    
+    % ensure positivity of x, s and w (interiority)
+    x = max(abs(x + del_x),e);
+    sl = max(abs(sl + del_sl),e);
+    su = max(abs(su + del_su),e);
+    wl = max(abs(wl + del_wl),e);
+    wu = max(abs(wu + del_wu),e);
+
+    outputArg1 = inputArg1;
+    outputArg2 = inputArg2;
+end
