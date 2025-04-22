@@ -5,6 +5,11 @@ function [x, sl, su, y, wl, wu, bound] = Interior_Points_Init(H, A, b, c, xl, xu
     m = size(A, 1);
     e = ones(n,1);
 
+    sl = NaN;
+    su = NaN;
+    wl = NaN;
+    wu = NaN;
+
     % check if x has upper or lower bound
     bound = "";
     if xl > -10^3
