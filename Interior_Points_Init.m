@@ -5,29 +5,40 @@ function [x, sl, su, y, wl, wu, bound] = Interior_Points_Init(H, A, b, c, xl, xu
     m = size(A, 1);
     e = ones(n,1);
 
-    sl = NaN;
-    su = NaN;
-    wl = NaN;
-    wu = NaN;
+    sl = zeros(n,1);
+    su = zeros(n,1);
+    wl = zeros(n,1);
+    wu = zeros(n,1);
 
-    % check if x has upper or lower bound
-    bound = "";
-    if xl > -10^3
-        bound = bound + "l";
-        sl = rand(n,1);
-        wl = rand(n,1);
-        Sl1 = diag(ones(n,1)./sl);
-        Wl = diag(wl);
+    % check if each x-component has upper or lower bound
+    bound_l = zeros(n);
+    bound_u = zeros(n);
+    for i = 1:n
+        if xl(i) > -10^3
+            bound_l(i,i) = 1;
+            sl(i) = rand(1);
+            wl(i) = rand(1);
+        end
+        if xu < 10^3
+            bound_u(i,i) = 1;
+            su(i) = rand(1);
+            wu(i) = rand(1);
+        end
     end
-    if xu < 10^3
-        bound = bound + "u";
-        su = rand(n,1);
-        wu = rand(n,1);
-        Su1 = diag(ones(n,1)./su);
-        Wu = diag(wu);
-    end
+    Sl1 = diag(ones(n,1)./sl);
+    Wl = diag(wl);
+    Su1 = diag(ones(n,1)./su);
+    Wu = diag(wu);
 
     % calculate affine steps according to which bound of x exists
+
+    mat = [H zeros(n,2*n) A' bound_l*eye(n) -bound_u*eye(n);
+        zeros(n) bound_l*Sl1*Wl zeros(n,n+m) -bound_l*eye(n) zeros(n);
+        zeros(n,2*n) bound_u*Su1*Wu zeros(n, m+n) -bound_u*eye(n);
+        A zeros(m,m+4*n);
+        bound_l*eye(n) -bound_l*eye(n) zeros(m+3*n);
+        -bound_u*eye(n) zeros(n) -bound_u*eye(n) zeros(m+2*n)];
+    omega = [H*x + c - A'*y - wl + wu; Wl*e; Wu*e; A*x - b; bound_l*(x -xl -sl); bound_u*(-x +xu -su)];
     switch bound
         case "lu"
             mat = [H zeros(n,2*n) A' eye(n) -eye(n);

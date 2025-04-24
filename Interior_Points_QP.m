@@ -91,7 +91,9 @@ function [x,y,v_1,v_2, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, x, y)
         case "u"
 
         otherwise
-
+            for i = 1:iter
+                
+            end
     end
 
 
