@@ -1,4 +1,4 @@
-function [x, sl, su, tl, tu, y, wl, wu, zl, zu] = Interior_Points_Init(H, A, b, c, xl, xu, cl, cu, C)
+function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bound_cu] = Interior_Points_Init(H, A, b, c, xl, xu, cl, cu, C)
 % Calculate initial iterate of Interior Point QP Method 
 
     n = size(A, 2);
@@ -23,9 +23,9 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu] = Interior_Points_Init(H, A, b, 
     Wl = diag(wl);
     Su1 = diag(ones(n,1)./su);
     Wu = diag(wu);
-    Tl1 = diag(ones(rl,1)./tl);
+    Tl1 = diag(ones(r,1)./tl);
     Zl = diag(zl);
-    Tu1 = diag(ones(ru,1)./tu);
+    Tu1 = diag(ones(r,1)./tu);
     Zu = diag(zu);
 
 
@@ -54,7 +54,7 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu] = Interior_Points_Init(H, A, b, 
     %cancel lines where Cx has no upper or no lower bound
     bound_cl = eye(r);
     bound_cu = eye(r);
-    for i = r:1
+    for i = 1:r
         if cl(i) < -10^3
             cl(i) = 0;
             tl(i) = 0;
@@ -69,7 +69,7 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu] = Interior_Points_Init(H, A, b, 
         end
     end
     Tl1 = bound_cl*Tl1;
-    Zl = boubnd_cl*Zl;
+    Zl = bound_cl*Zl;
     Tu1 = bound_cu*Tu1;
     Zu = bound_cu*Zu;
 
@@ -90,7 +90,7 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu] = Interior_Points_Init(H, A, b, 
         C zeros(r,m) inv(psi)];
     omega = [H*x + c - A'*y - C'*zl + C'*zu;
         A*x-b;
-        rol + foo];
+        rhol + foo];
     sol = omega\mat;
     
     del_x = sol(1:n);
@@ -115,9 +115,9 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu] = Interior_Points_Init(H, A, b, 
     wl = bound_xl*max(abs(wl + del_wl),e);
     wu = bound_xu*max(abs(wu + del_wu),e);
 
-    tl = bound_cl*max(abs(tl + del_tl),e);
-    tu = bound_cu*max(abs(tu + del_tu),e);
+    tl = bound_cl*max(abs(tl + del_tl),ones(r,1));
+    tu = bound_cu*max(abs(tu + del_tu),ones(r,1));
 
-    zl = bound_cl*max(abs(zl + del_zl),e);
-    zu = bound_cu*max(abs(zu + del_zu),e);
+    zl = bound_cl*max(abs(zl + del_zl),ones(r,1));
+    zu = bound_cu*max(abs(zu + del_zu),ones(r,1));
 end
