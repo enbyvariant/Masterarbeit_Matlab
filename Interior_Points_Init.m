@@ -1,58 +1,123 @@
-function [x, sl, su, y, wl, wu, bound_l, bound_u] = Interior_Points_Init(H, A, b, c, xl, xu, x, y)
+function [x, sl, su, tl, tu, y, wl, wu, zl, zu] = Interior_Points_Init(H, A, b, c, xl, xu, cl, cu, C)
 % Calculate initial iterate of Interior Point QP Method 
 
     n = size(A, 2);
     m = size(A, 1);
+    r = size(C,1);
     e = ones(n,1);
 
-    sl = zeros(n,1);
-    su = zeros(n,1);
-    wl = zeros(n,1);
-    wu = zeros(n,1);
+    sl = rand(n,1);
+    su = rand(n,1);
+    wl = rand(n,1);
+    wu = rand(n,1);
 
-    % check if each x-component has upper or lower bound
-    bound_l = zeros(n);
-    bound_u = zeros(n);
-    for i = 1:n
-        if xl(i) > -10^3
-            bound_l(i,i) = 1;
-            sl(i) = rand(1);
-            wl(i) = rand(1);
-        end
-        if xu < 10^3
-            bound_u(i,i) = 1;
-            su(i) = rand(1);
-            wu(i) = rand(1);
-        end
-    end
+    tl = rand(r,1);
+    tu = rand(r,1);
+    zl = rand(r,1);
+    zu = rand(r,1);
+
+    x = rand(n,1);
+    y = rand(m,1);
+
     Sl1 = diag(ones(n,1)./sl);
     Wl = diag(wl);
     Su1 = diag(ones(n,1)./su);
     Wu = diag(wu);
+    Tl1 = diag(ones(rl,1)./tl);
+    Zl = diag(zl);
+    Tu1 = diag(ones(ru,1)./tu);
+    Zu = diag(zu);
 
-    % calculate affine step according to which bound of x exists
 
-    mat = [H zeros(n,2*n) A' bound_l*eye(n) -bound_u*eye(n);
-        zeros(n) bound_l*Sl1*Wl zeros(n,n+m) -bound_l*eye(n) zeros(n);
-        zeros(n,2*n) bound_u*Su1*Wu zeros(n, m+n) -bound_u*eye(n);
-        A zeros(m,m+4*n);
-        bound_l*eye(n) -bound_l*eye(n) zeros(m+3*n);
-        -bound_u*eye(n) zeros(n) -bound_u*eye(n) zeros(m+2*n)];
-    omega = [H*x + c - A'*y - wl + wu; Wl*e; Wu*e; A*x - b; bound_l*(x -xl -sl); bound_u*(-x +xu -su)];
+    % cancel lines where x-component has no upper or no lower bound
+    bound_xl = eye(n);
+    bound_xu = eye(n);
+    for i = n:1
+        if xl(i) < -10^3
+            xl(i) = 0;
+            sl(i) = 0; 
+            wl(i) = 0; 
+            bound_xl(i,i) = 0;
+        end
+        if xu > 10^3
+            xu(i) = 0;
+            su(i) = 0;
+            wu(i) = 0;
+            bound_xu(i,i) = 0;
+        end
+    end
+    Sl1 = bound_xl*Sl1;
+    Wl = bound_xl*Wl;
+    Su1 = bound_xu*Su1;
+    Wu = bound_xu*Wu;
+
+    %cancel lines where Cx has no upper or no lower bound
+    bound_cl = eye(r);
+    bound_cu = eye(r);
+    for i = r:1
+        if cl(i) < -10^3
+            cl(i) = 0;
+            tl(i) = 0;
+            zl(i) = 0;
+            bound_cl(i,i) = 0;
+        end
+        if cu(i) > 10^3
+            cu(i) = 0;
+            tu(i) = 0;
+            zu(i) = 0;
+            bound_cu(i,i) = 0;
+        end
+    end
+    Tl1 = bound_cl*Tl1;
+    Zl = boubnd_cl*Zl;
+    Tu1 = bound_cu*Tu1;
+    Zu = bound_cu*Zu;
+
+    
+    % helping variables
+    rhol = bound_cl*(C*x-cl-tl);
+    rhou = bound_cu*(-C*x + cu - tu);
+    betal = bound_xl*(x-xl-sl);
+    betau = bound_xu*(-x+xu-su);
+    Hphi = H + Sl1*Wl + Su1*Wu;
+    psi = Tl1*Zl +Tu1*Zu;
+    xi = zl-zu-Tu1*Zu*(rhol + rhou);
+    foo = xi/psi;
+
+    % calculate affine step with reduced system
+    mat = [Hphi A' C';
+        A zeros(m,m + r);
+        C zeros(r,m) inv(psi)];
+    omega = [H*x + c - A'*y - C'*zl + C'*zu;
+        A*x-b;
+        rol + foo];
     sol = omega\mat;
     
     del_x = sol(1:n);
-    del_sl = sol(n+1:2*n);
-    del_su = sol(2*n+1:3*n);
-    del_wl = sol(3*n+m+1:4*n+m);
-    del_wu = sol(4*n+m+1:5*n+m);
+    del_z = sol(n+m+1:n+m+r);
+
+    % calculate all variables of expanded system
+    del_sl = bound_xl*(del_x + betal);
+    del_su = bound_xu*(-del_x + betau);
+    del_wl = bound_xl*(-wl -Sl1*Wl*del_sl);
+    del_wu = bound_xu*(-wu - Su1*Wu*del_su);
+
+    del_tl = (-del_z -xi)\psi;
+    del_tu = -del_tl + rhou + rhol;
+    del_zu = -zu -Tu1*Zu*del_tu;
+    del_zl = del_z + del_zu;
+
     
-    % ensure positivity of x, s and w (interiority)
-    sl = max(abs(sl + del_sl),e);
-    su = max(abs(su + del_su),e);
+    % ensure positivity of s, w, t and z (interiority)
+    sl = bound_xl*max(abs(sl + del_sl),e);
+    su = bound_xu*max(abs(su + del_su),e);
 
-    wl = max(abs(wl + del_wl),e);
-    wu = max(abs(wu + del_wu),e);
+    wl = bound_xl*max(abs(wl + del_wl),e);
+    wu = bound_xu*max(abs(wu + del_wu),e);
 
-    x = max(abs(x + del_x),e);
+    tl = bound_cl*max(abs(tl + del_tl),e);
+    tu = bound_cu*max(abs(tu + del_tu),e);
+
+    zl = bound_cl*max(abs(zl + del_zl),e);
+    zu = bound_cu*max(abs(zu + del_zu),e);
 end
