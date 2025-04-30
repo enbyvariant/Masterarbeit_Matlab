@@ -1,17 +1,88 @@
 % Implementation of the Interior Points Method for LPs
 % jetzt auch in github
 
-function [x,y,v_1,v_2, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, x, y)
+function [x,y,v_1,v_2, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, cl, cu, C)
     
     % Initial values
     n = size(A, 2);
     m = size(A, 1);
+    r = size(C,1);
     e = ones(n,1);
     tao = .5;
 
     % Compute starting point
-    [x, sl, su, y, wl, wu, bound] = Interior_Points_Init(H, A, b, c, xl, xu, x, y);
+    [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bound_cu] = Interior_Points_Init(H, A, b, c, xl, xu, cl, cu, C);
     
+    for i = 1:iter
+        Sl1 = zeros(n);
+        Su1 = zeros(n);
+        for i = 1:n
+            Sl1(i) = max(1/sl(i),0);
+            Su1(i) = max(1/su(i),0);
+        end
+        Wl = diag(wl);
+        Wu = diag(wu);
+
+        Tl1 = zeros(r);
+        Tu1 = zeros(r);
+        for i = 1:r
+            Tl1(i) = max(1/tl(i),0);
+            Tu1(i) = max(1/tu(i),0);
+        end
+        Zl = diag(zl);
+        Zu = diag(zu);
+
+        Hphi = H + Sl1*Wl + Su1*Wu;
+        psi = Tl1*Zl + Tu1*Zu;
+        rhol = (C*x - cl -tl)*bound_cl;
+        rhou = (-C*x + cu -tu)*bound_cu;
+        betal = (x -xl -sl)*bound_xl;
+        betau = (-x + xu -su)*bound_xu;
+        xi = zl - zu - Tu1*Zu*(rhol+rhou);
+        foo = xi\psi;
+        mat = [Hphi A' C';
+            A zeros(m,m+r);
+            C zeros(r,m) inv(psi)];
+        omega = [H*x + c - A'*y - bound_cl*C'*zl + bound_cu*C'*zu +Sl1*Wl*betal -Su1*Wu*betau;
+            A*x-b;
+            rhol + foo];
+        sol = omega\mat;
+        del_x = sol(1:n);
+        del_z = sol(n+m+1:n+m+r);
+        del_sl = bound_xl*(del_x + betal);
+        del_su = bound_xu*(-del_x + betau);
+        del_wl = bound_xl*(-wl -Sl1*Wl*del_sl);
+        del_wu = bound_xu*(-wu - Su1*Wu*del_su);
+    
+        del_tl = (-del_z -xi)\psi;
+        del_tu = -del_tl + rhou + rhol;
+        del_zu = -zu -Tu1*Zu*del_tu;
+        del_zl = del_z + del_zu;
+        
+        % calculate duality measure
+        mu = (sl'*wl + su'*wu + tl'*zl + tu'*zu)/(2*n+2*r);
+        
+        % calculate affine step length
+        step = [del_sl; del_su; del_wl; del_wu; del_tl; del_tu; del_zl; del_zu];
+        curr = [sl; su; wl; wu; tl; tu; zl; zu];
+        index = find(step < 0);
+        if isempty(index)
+            alpha = 1;
+        else
+            alpha = min(curr(index)./(-step(index)));
+            if alpha > 1
+                alpha = 1;
+            end
+        end
+        
+        % calculate affine duality measure
+        mu_aff = ((sl+ alpha*del_sl)' * (wl + alpha*del_wl) + (su + alpha*del_su)' * (wu + del_wu) + (tl + alpha*del_tl)'*(zl + alpha*del_zl) + (tu + alpha*del_tu)'*(zu + alpha*del_zu))/(2*n + 2*r);
+
+        % set the centering parameter sigma
+        sigma = (mu_aff/mu)^3;
+    end
+
+
 
     switch bound
         case "lu"
