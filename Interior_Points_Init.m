@@ -60,6 +60,7 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bou
             tl(i) = 0;
             zl(i) = 0;
             bound_cl(i,i) = 0;
+            
         end
         if cu(i) > 10^3
             cu(i) = 0;
@@ -91,7 +92,7 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bou
     omega = [H*x + c - A'*y - C'*zl + C'*zu;
         A*x-b;
         rhol + foo];
-    sol = omega\mat;
+    sol = (-omega\mat)';
     
     del_x = sol(1:n);
     del_z = sol(n+m+1:n+m+r);
