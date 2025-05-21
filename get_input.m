@@ -1,4 +1,4 @@
-function [A, b, H, c, c_0, x, y, v_1, v_2, xl, xu] = get_input()
+function [A, b, H, c, c_0, xl, xu] = get_input()
     
     prob = cutest_setup();
     n = prob.n;
@@ -11,14 +11,9 @@ function [A, b, H, c, c_0, x, y, v_1, v_2, xl, xu] = get_input()
     A = zeros(m,n);
     c = zeros(n,1);
     for i = 1:n
-        A(1:m,i) = cutest_cons([zeros(i-1,1); 1; zeros(n-i,1)])-b;
+        A(1:m,i) = cutest_cons([zeros(i-1,1); 1; zeros(n-i,1)])+b;
         c(i) = cutest_obj([zeros(i-1,1); 1; zeros(n-i,1)])- 1/2*H(i,i)-c_0;
     end
-
-    y = max(prob.v, rand(m,1));
-    x = max(prob.x, rand(n,1));
-    v_1 = rand(n,1);
-    v_2 = rand(n,1);
 
     % x = zeros(2*n,1);
     % for i = 1:n
