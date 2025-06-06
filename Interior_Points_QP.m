@@ -1,19 +1,28 @@
 % Implementation of the Interior Points Method for LPs
 % jetzt auch in github
 
-function [x,y,zl,zu,wl, wu, sl,su, tl, tu, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, cl, cu, C)
+function [x,y,wl, wu, sl,su, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, cl, cu, C)
     
     % Initial values
     n = size(A, 2);
     m = size(A, 1);
     r = size(C,1);
     en = ones(n,1);
-    er = ones(r);
-    tao = .5;
+    er = ones(r,1);
+    tao = 0.9;
 
     % Compute starting point
     [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bound_cu] = Interior_Points_Init(H, A, b, c, xl, xu, cl, cu, C);
-    
+    % x = [1;1;1;1];
+    % sl = x-xl;
+    % su = zeros(4,1);
+    % y = ones(2,1);
+    % wl = ones(4,1);
+    % wu = ones(4,1);
+    % bound_xl = eye(4);
+    % bound_xu = zeros(4);
+
+
     for i = 1:iter
         % if inequalities do not exist, use smaller equation system
         if r == 0
@@ -21,50 +30,30 @@ function [x,y,zl,zu,wl, wu, sl,su, tl, tu, mu] = Interior_Points_QP(iter, A, b, 
            %----------------------------------
 
            % update  helping variables
-            % Sl1 = zeros(n);
-            % Su1 = zeros(n);
-            % for i = 1:n
-            %     Sl1(i) = max(1/sl(i),0);
-            %     Su1(i) = max(1/su(i),0);
-            % end
-            sl1 = (ones(n,1)./sl);
-            su1 = ones(n,1)./su;
-            Sl1 = diag(sl1);
-            Su1 = diag(su1);
+            Sl1 = zeros(n);
+            Su1 = zeros(n);
+            for i = 1:n
+                if sl(i) ~= 0
+                    Sl1(i,i) = 1/sl(i);
+                end
+                if su(i) ~= 0
+                    Su1(i,i) = 1/su(i);
+                end
+            end
             Wl = diag(wl);
             Wu = diag(wu);
-            betal = (x -xl -sl);
-            betau = (-x + xu -su);
+            betal = bound_xl*(x -xl -sl);
+            betau = bound_xu*(-x + xu -su);
 
-            % calculate affine step
-            % mat = [H     zeros(n)    zeros(n)      A'       eye(n)     -eye(n);
-            %     zeros(n)    Sl1*Wl   zeros(n)   zeros(n,m)  -eye(n)    zeros(n);
-            %     zeros(n) zeros(n)     Su1*Wu    zeros(n,m)  zeros(n)    -eye(n);
-            %        A     zeros(m,n)  zeros(m,n)  zeros(m)  zeros(m,n)  zeros(m,n);
-            %      eye(n)   -eye(n)    zeros(n)   zeros(n,m)  zeros(n)   zeros(n);
-            %     -eye(n)  zeros(n)    -eye(n)    zeros(n,m)  zeros(n)   zeros(n)];
-            % om1 = -(H*x + c - A' * y - wl + wu);
-            % om2 = -wl;
-            % om3 = -wu;
-            % om4 = -(A*x - b);
-            % om5 = -(x - xl - sl);
-            % om6 = -(-x + xu -su);
-            % omega = [om1;om2;om3;om4;om5;om6];
-            % sol = mat\omega;
-            % %del_x_a = sol(1:n);
-            % del_sl_a = sol(n+1:2*n);
-            % del_su_a = sol(2*n+1:3*n);
-            % del_wl_a = -sol(3*n+m+1:4*n+m);
-            % del_wu_a = -sol(4*n+m+1:5*n+m);
-
-            Hphi = H + Sl1*Wl + Su1*Wu;
+            Hphi = H + bound_xl*Sl1*Wl + bound_xu*Su1*Wu;
             mat = [Hphi     A';
                     A    zeros(m)];
-            omega_1 = -H*x - c - A'*y - Sl1*Wl*betal + Su1*Wu*betau;
+            omega_1 = -H*x - c + A'*y - bound_xl*Sl1*Wl*betal + bound_xu*Su1*Wu*betau;
             omega_2 = -(A*x -b);
             omega = [omega_1; omega_2];
             sol = mat\omega;
             del_x_a = sol(1:n);
+            del_y_a = -sol(n+1:n+m);
 
             % calculate other variables of expanded system
             del_sl_a = bound_xl*(del_x_a + betal);
@@ -77,52 +66,47 @@ function [x,y,zl,zu,wl, wu, sl,su, tl, tu, mu] = Interior_Points_QP(iter, A, b, 
             curr = [sl; su; wl; wu];
             index = find(step < 0);
             if isempty(index)
-                alpha = 1;
+                alpha_aff = 1;
             else
-                alpha = min(curr(index)./(-step(index)));
-                if alpha > 1
-                    alpha = 1;
+                alpha_aff = min(-tao*curr(index)./step(index));
+                if alpha_aff > 1
+                    alpha_aff = 1;
                 end
             end
             
+            % calculate provisional new step
+            x_a = x + alpha_aff*del_x_a;
+            y_a = y + alpha_aff*del_y_a;
+            sl_a = bound_xl*(sl + alpha_aff*del_sl_a);
+            su_a = bound_xu*(su + alpha_aff*del_su_a);
+            wl_a = bound_xl*(wl + alpha_aff*del_wl_a);
+            wu_a = bound_xu*(wu + alpha_aff*del_wu_a);
+
             % calculate duality measure mu
             mu = (sl'*wl + su'*wu)/(2*n);
 
             % calculate affine duality measure mu_aff
-            mu_aff = ((sl + alpha*del_sl_a)'*(wl + alpha*del_wl_a) + (su + alpha*del_su_a)'*(wu + alpha*del_wu_a))/(2*n);
+            mu_aff = (sl_a'*wl_a + su_a'*wu_a)/(2*n);
 
             % calculate centering parameter sigma
             sigma = (mu_aff/mu)^3;
+            if sigma > 1
+                sigma = 1;
+            end
             
-            % compute step direction
-            % om1 = -(H*x + c - A' * y - wl + wu);
-            % om2 = -(wl - Sl1*sigma*mu*en + Sl1*diag(del_sl_a)*diag(del_wl_a)*en);
-            % om3 = -(wu - Su1*sigma*mu*en + Su1*diag(del_su_a)*diag(del_wu_a)*en);
-            % om4 = -(A*x - b);
-            % om5 = -(x - xl - sl);
-            % om6 = -(-x + xu -su);
-            % omega = [om1;om2;om3;om4;om5;om6];
-            % sol = mat\omega;
-            % del_x = sol(1:n);
-            % del_sl = sol(n+1:2*n);
-            % del_su = sol(2*n+1:3*n);
-            % del_y = -sol(3*n+1:3*n+m);
-            % del_wl = -sol(3*n+m+1:4*n+m);
-            % del_wu = -sol(4*n+m+1:5*n+m);
-
-            phil = wl - Sl1*sigma*mu*en+Sl1*diag(del_sl_a)*diag(del_wu_a)*en;
-            phiu = wu - Su1*sigma*mu*en+ Su1*diag(del_su_a)*diag(del_wu_a)*en;
-            omega_1 = -H*x -c + A'*y + bound_xl*wl - bound_xu*wu -bound_xl*(phil + Sl1*Wl*betal) + bound_xu*(phiu + Su1*Wu*betau);
+            phil = wl - Sl1*sigma*mu*en + Sl1*diag(del_sl_a)*diag(del_wl_a)*en;
+            phiu = wu - Su1*sigma*mu*en + Su1*diag(del_su_a)*diag(del_wu_a)*en;
+            omega_1 = -H*x -c + A'*y + bound_xl*wl - bound_xu*wu - bound_xl*(phil + Sl1*Wl*betal) + bound_xu*(phiu + Su1*Wu*betau);
             omega = [omega_1; -(A*x - b)];
             sol = mat\omega;
             del_x = sol(1:n);
             del_y = -sol(n+1:n+m);
 
             % calculate all variables of the expanded system
-            del_sl = bound_xl* (del_x + betal);
-            del_su = bound_xu* (-del_x + betau);
-            del_wl = bound_xl* (-Sl1*Wl*del_sl - phil);
-            del_wu = bound_xu* (-Su1*Wu*del_su - phiu);
+            del_sl = bound_xl*(del_x + betal);
+            del_su = bound_xu*(-del_x + betau);
+            del_wl = bound_xl*(-Sl1*Wl*del_sl - phil);
+            del_wu = bound_xu*(-Su1*Wu*del_su - phiu);
 
             % calculate step length alpha
             step = [del_sl; del_su; del_wl; del_wu];
@@ -141,13 +125,18 @@ function [x,y,zl,zu,wl, wu, sl,su, tl, tu, mu] = Interior_Points_QP(iter, A, b, 
             x = x + alpha*del_x;
             y = y + alpha*del_y;
 
-            sl = sl + alpha*del_sl;
-            su = su + alpha*del_su;
+            sl = bound_xl*(sl + alpha*del_sl);
+            su = bound_xu*(su + alpha*del_su);
 
-            wl = wl + alpha*del_wl;
-            wu = wu + alpha*del_wu;
+            wl = bound_xl*(wl + alpha*del_wl);
+            wu = bound_xu*(wu + alpha*del_wu);
+            
 
-            tao = tao/2;
+            mu = (sl'*wl+su'*wu)/(2*n);
+            if mu < 1*10^(-15)
+                break;
+            end
+
         else
             % Case Inequalities do exist
             %----------------------------%

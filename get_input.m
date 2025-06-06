@@ -3,10 +3,10 @@ function [A, b, H, c, c_0, xl, xu] = get_input()
     prob = cutest_setup();
     n = prob.n;
     m = prob.m;
-    b = -cutest_cons(zeros(n,1));
-    xl = prob.bl;
-    xu = prob.bu;
-    H = cutest_hess(prob.x, prob.v);
+    b = sparse(-cutest_cons(zeros(n,1)));
+    xl = sparse(prob.bl);
+    xu = sparse(prob.bu);
+    H = sparse(cutest_hess(prob.x, prob.v));
     c_0 = cutest_obj(zeros(n,1));
     A = zeros(m,n);
     c = zeros(n,1);
@@ -14,7 +14,8 @@ function [A, b, H, c, c_0, xl, xu] = get_input()
         A(1:m,i) = cutest_cons([zeros(i-1,1); 1; zeros(n-i,1)])+b;
         c(i) = cutest_obj([zeros(i-1,1); 1; zeros(n-i,1)])- 1/2*H(i,i)-c_0;
     end
-
+    A = sparse(A);
+    c = sparse(c);
     % x = zeros(2*n,1);
     % for i = 1:n
     %     if prob.x(i) < 0
