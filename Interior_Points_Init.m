@@ -6,30 +6,16 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bou
     r = size(C,1);
     en = ones(n,1);
 
-    % sl = ones(n,1);
-    % su = ones(n,1);
-    wl = 0.01*ones(n,1);
-    wu = 0.01*ones(n,1);
+    wl = ones(n,1);
+    wu = ones(n,1);
 
-    tl = ones(r,1);
-    tu = ones(r,1);
     zl = ones(r,1);
     zu = ones(r,1);
 
-    x = 0.1*ones(n,1);
+    x = ones(n,1);
     y = rand(m,1);
 
-    %Tl1 = diag(ones(r,1)./tl);
-    % Tl1 = eye(r);
-    Zl = diag(zl);
-    %Tu1 = diag(ones(r,1)./tu);
-    % Tu1 = eye(r);
-    Zu = diag(zu);
-
-
     % cancel lines where x-component has no upper or no lower bound
-    % bound_xl = sparse(eye(n));
-    % bound_xu = sparse(eye(n));
     index_l = ones(1,n);
     index_u = ones(1,n);
     for i = 1:n
@@ -103,22 +89,35 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bou
         for i = 1:r
             if cl(i) < -10^3
                 cl(i) = 0;
-                tl(i) = 0;
                 zl(i) = 0;
                 index_cl(i) = 0;
 
             end
             if cu(i) > 10^3
                 cu(i) = 0;
-                tu(i) = 0;
                 zu(i) = 0;
                 index_cu(i) = 0;
             end
         end
-        Tl1 = bound_cl*Tl1;
-        Zl = bound_cl*Zl;
-        Tu1 = bound_cu*Tu1;
-        Zu = bound_cu*Zu;
+        Zl = diag(zl);
+        Zu = diag(zu);
+        index_cl = find(index_cl);
+        index_cu = find(index_cu);
+        bound_cl = sparse(index_cl, index_cl, ones(size(index_cl)), r, r);
+        bound_cu = sparse(index_cu, index_cu, ones(size(index_cu)), r, r);
+
+        tl = bound_cl*ones(r,1);
+        tu = bound_cu*ones(r,1);
+        Tl1 = zeros(r);
+        Tu1 = zeros(r);
+        for i = 1:r
+            if tl(i) ~= 0
+            Tl1(i,i) = 1/tl(i);
+            end
+            if tu(i) ~= 0
+                Tu1(i,i) = 1/tu(i);
+            end
+        end
 
         % helping variables
         rhol = bound_cl*(C*x-cl-tl);
@@ -128,13 +127,13 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bou
         Hphi = H + Sl1*Wl + Su1*Wu;
         psi = Tl1*Zl +Tu1*Zu;
         xi = -bound_cl*(zl + Tl1*Zl*rhol) + bound_cu*(zu + Tu1*Zu*rhou);
-        foo = xi/psi;
+        foo = psi\xi;
 
         % calculate affine step with reduced system
         mat = [Hphi A' C';
             A zeros(m,m + r);
             C zeros(r,m) inv(psi)];
-        omega = [-H*x - c + A'*y + bound_cl*C'*zl - bound_cu*C'*zu - bound_xl*Sl1*Wl*betal + bound_xu*Su1*Wu*betau;
+        omega = [-H*x - c + A'*y + C'*bound_cl*zl - C'*bound_cu*zu - bound_xl*Sl1*Wl*betal + bound_xu*Su1*Wu*betau;
             -(A*x-b);
             foo];
         sol = mat\omega;

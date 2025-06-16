@@ -20,10 +20,10 @@ function [A, b, H, c, c_0, xl, xu, C, cl, cu] = get_input()
     xu = sparse(prob.bu);
     H = cutest_hess(prob.x, prob.v);
 
-    M = zeros(m,n);
+    M = zeros(m+r,n);
     c = zeros(n,1);
     for i = 1:n
-        M(1:m,i) = cutest_cons([zeros(i-1,1); 1; zeros(n-i,1)])+const;
+        M(1:m+r,i) = cutest_cons([zeros(i-1,1); 1; zeros(n-i,1)])+const;
         c(i) = cutest_obj([zeros(i-1,1); 1; zeros(n-i,1)])- 1/2*H(i,i)-c_0;
     end
 
@@ -38,19 +38,23 @@ function [A, b, H, c, c_0, xl, xu, C, cl, cu] = get_input()
     A = zeros(m,n);
     b = zeros(m,1);
 
-    for j = 1:m
+    for j = 1:m+r
+        prob.cl
+        prob.cu
         % constraint of the form Cx <= cu
         if prob.cl(j) < - 10^3
             i = i + 1;
             C(i,1:n) = M(j,1:n);
             cu(i) = const(j);
+            cl(i) = - 10^5;
         end
 
         % constraint of the form cl <= Cx
-        if prob.cu > 10^3
+        if prob.cu(j) > 10^3
             i = i + 1;
             C(i,1:n) = M(j,1:n);
             cl(i) = const(j);
+            cu(i) = 10^5;
         end
 
         % constraint of the form Ax = b
@@ -70,17 +74,6 @@ function [A, b, H, c, c_0, xl, xu, C, cl, cu] = get_input()
 
     A = sparse(A);
     b = sparse(b);
-
-    
-
-    if any(prob.cl)
-        fprintf("error in input: c_l =");
-        disp(prob.cl);
-    end
-    if any(prob.cu)
-        disp("error in input: c_u =")
-        disp(prob.cu);
-    end
 
     cutest_terminate;
 end

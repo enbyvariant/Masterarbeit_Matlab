@@ -1,7 +1,7 @@
 % Implementation of the Interior Points Method for LPs
 % jetzt auch in github
 
-function [x,y,wl, wu, sl,su, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, cl, cu, C)
+function [x,y,wl, wu, sl,su, mu, opt, iterations] = Interior_Points_QP(iter, A, b, xl, xu, H, c, cl, cu, C)
     
     % Initial values
     n = size(A, 2);
@@ -21,9 +21,13 @@ function [x,y,wl, wu, sl,su, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, 
     % wu = ones(4,1);
     % bound_xl = eye(4);
     % bound_xu = zeros(4);
+    iterations = 0;
 
-
-    for i = 1:iter
+    while 1
+        iterations = iterations + 1;
+        if iterations > iter
+            break;
+        end
         % if inequalities do not exist, use smaller equation system
         if r == 0
            % Case: Inequalities do not exist
@@ -53,7 +57,7 @@ function [x,y,wl, wu, sl,su, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, 
             omega = [omega_1; omega_2];
             sol = mat\omega;
             del_x_a = sol(1:n);
-            del_y_a = -sol(n+1:n+m);
+            %del_y_a = -sol(n+1:n+m);
 
             % calculate other variables of expanded system
             del_sl_a = bound_xl*(del_x_a + betal);
@@ -75,8 +79,8 @@ function [x,y,wl, wu, sl,su, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, 
             end
             
             % calculate provisional new step
-            x_a = x + alpha_aff*del_x_a;
-            y_a = y + alpha_aff*del_y_a;
+            %x_a = x + alpha_aff*del_x_a;
+            %y_a = y + alpha_aff*del_y_a;
             sl_a = bound_xl*(sl + alpha_aff*del_sl_a);
             su_a = bound_xu*(su + alpha_aff*del_su_a);
             wl_a = bound_xl*(wl + alpha_aff*del_wl_a);
@@ -122,7 +126,7 @@ function [x,y,wl, wu, sl,su, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, 
             end
             
             % update iterate
-            x = x + alpha*del_x
+            x = x + alpha*del_x;
             y = y + alpha*del_y;
 
             sl = bound_xl*(sl + alpha*del_sl);
@@ -132,10 +136,7 @@ function [x,y,wl, wu, sl,su, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, 
             wu = bound_xu*(wu + alpha*del_wu);
             
 
-            mu = (sl'*wl+su'*wu)/(2*n)
-            if mu < 1*10^(-15)
-                break;
-            end
+            mu = (sl'*wl+su'*wu)/(2*n);
 
         else
             % Case Inequalities do exist
@@ -145,8 +146,12 @@ function [x,y,wl, wu, sl,su, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, 
             Sl1 = zeros(n);
             Su1 = zeros(n);
             for i = 1:n
-                Sl1(i) = max(1/sl(i),0);
-                Su1(i) = max(1/su(i),0);
+                if sl(i) ~= 0
+                    Sl1(i,i) = 1/sl(i);
+                end
+                if su(i) ~= 0
+                    Su1(i,i) = 1/su(i);
+                end
             end
             Wl = diag(wl);
             Wu = diag(wu);
@@ -154,14 +159,17 @@ function [x,y,wl, wu, sl,su, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, 
             Tl1 = zeros(r);
             Tu1 = zeros(r);
             for i = 1:r
-                Tl1(i) = max(1/tl(i),0);
-                Tu1(i) = max(1/tu(i),0);
+                if tl(i) ~= 0
+                    Tl1(i,i) = 1/tl(i);
+                end
+                if tu(i) ~= 0
+                    Tu1(i,i) = 1/tu(i);
+                end
             end
             Zl = diag(zl);
             Zu = diag(zu);
-    
-            rhol = (C*x - cl -tl)*bound_cl;
-            rhou = (-C*x + cu -tu)*bound_cu;
+            rhol = bound_cl*(C*x - cl -tl);
+            rhou = bound_cu*(-C*x + cu -tu);
             betal = bound_xl*(x -xl -sl);
             betau = bound_xu*(-x + xu -su);
             
@@ -170,52 +178,31 @@ function [x,y,wl, wu, sl,su, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, 
             psi = bound_cl*Tl1*Zl + bound_cu*Tu1*Zu;
             psi1 = zeros(r);
             for i = 1:r
-                psi1(i,i) = max(1/psi(i,i), 0);
+                psi1(i,i) = 1/psi(i,i);
             end
-
-            xi = -bound_cl*(zl + rhol) + bound_cu*(zu + rhou);
-            foo = psi1*xi;
-            mat = [Hphi A' C';
-                A zeros(m,m+r);
-                C zeros(r,m) psi1];
-            if r == 0
-                bar_l = zeros(size(c));
-                bar_u = zeros(size(c));
-                omega_3 = zeros(0,1);
-            else
-                bar_l = C'*bound_cl*zl;
-                bar_u = C'*bound_cu*zu;
-                omega_3 = rhol + foo;
-            end
-            omega_1 = H*x + c - A'*y - bar_l + bar_u +Sl1*Wl*betal -Su1*Wu*betau;
-            omega_2 = A*x-b;
-    
-            omega = [omega_1;omega_2;omega_3];
-            sol = (-omega\mat)';
-    
+            mat = [Hphi     A'         C';
+                    A    zeros(m)   zeros(m,r);
+                    C    zeros(r,m)   -psi1   ];
+            omega_1 = -H*x - c + A'*y - bound_xl*Sl1*Wl*betal + bound_xu*Su1*Wu*betau;
+            omega_2 = -(A*x -b);
+            xi = -zl - bound_cl*Tl1*Zl*rhol + zu + bound_cu*Tu1*Zu*rhou;
+            omega_3 = psi1*xi;
+            omega = [omega_1; omega_2; omega_3];
+            sol = mat\omega;
             del_x_a = sol(1:n);
-            del_z_a = -sol(n+m+1:n+m+r);
+    
             del_sl_a = bound_xl*(del_x_a + betal);
             del_su_a = bound_xu*(-del_x_a + betau);
             del_wl_a = bound_xl*(-wl -Sl1*Wl*del_sl_a);
             del_wu_a = bound_xu*(-wu - Su1*Wu*del_su_a);
         
-            del_tl_a = bound_cl*((-del_z_a -xi)\psi)';
-            del_tu_a = bound_cu*(-del_tl_a + rhou + rhol);
+            del_tl_a = bound_cl*(C*del_x_a + rhol);
+            del_tu_a = bound_cu*(-C*del_x_a + rhou);
             del_zu_a = bound_cu*(-zu -Tu1*Zu*del_tu_a);
-            del_zl_a = bound_cl*(del_z_a + del_zu_a);
+            del_zl_a = bound_cl*(-zl - Tl1*Zl*del_tl_a);
             
             % calculate duality measure
-            sw = sl'*wl + su'*wu;
-            if r == 0
-                tz = 0;
-                actual_r = 0;
-            else
-                tz = tl'*zl + tu'*zu;
-                actual_r = er'*bound_cl*er + er'*bound_cu*er;
-            end
-            actual_n = en'*bound_xl*en + en'*bound_xu*en;
-            mu = (sw + tz)/(actual_n+actual_r);
+            mu = (sl'*wl + su'*wu + tl'*zl + tu'*zu)/(2*(n+r));
             
             % calculate affine step length
             step = [del_sl_a; del_su_a; del_wl_a; del_wu_a; del_tl_a; del_tu_a; del_zl_a; del_zu_a];
@@ -231,41 +218,40 @@ function [x,y,wl, wu, sl,su, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, 
             end
             
             % calculate affine duality measure
-            slwl_a = (sl+ alpha*del_sl_a)' * (wl + alpha*del_wl_a);
-            suwu_a = (su + alpha*del_su_a)' * (wu + del_wu_a);
-            if r == 0
-                tlzl_a = 0;
-                tuzu_a = 0;
-            else
-                tlzl_a = (tl + alpha*del_tl_a)'*(zl + alpha*del_zl_a);
-                tuzu_a = (tu + alpha*del_tu_a)'*(zu + alpha*del_zu_a);
-            end
-            mu_aff = (slwl_a + suwu_a + tlzl_a + tuzu_a)/(actual_n+actual_r);
+            sl_a = sl + alpha*del_sl_a;
+            su_a = su + alpha*del_su_a;
+            wl_a = wl + alpha*del_wl_a;
+            wu_a = wu + alpha*del_wu_a;
+            tl_a = tl + alpha*del_tl_a;
+            tu_a = tu + alpha*del_tu_a;
+            zl_a = zl + alpha*del_zl_a;
+            zu_a = zu + alpha*del_zu_a;
+            mu_aff = (sl_a'*wl_a + su_a'*wu_a + tl_a'*zl_a + tu_a'*zu_a)/(2*(n+r));
     
             % set the centering parameter sigma
             sigma = (mu_aff/mu)^3;
     
             % calculate new step
-            xi = -(zl - sigma*mu*Tl1*er + Tl1*diag(del_tl_a)*diag(del_zl_a)*er) + bound_cu*(zu - sigma*mu*Tu1*er + Tu1*diag(del_tu_a)*diag(del_zu_a)*er) + bound_cu*Tu1*Zu*(rhol+rhou);
-            foo = (xi\psi)';
-            omega_1 = H*x + c - A'*y - bar_l + bar_u + bound_xl*Sl1*Wl*betal - bound_xu*Su1*Wu*betau - bound_xl*sigma*mu*(Sl1*en) + bound_xu*sigma*mu*(Su1*en) + bound_xl*Sl1*diag(del_sl_a)*diag(del_wl_a)*en - bound_xu*Su1*diag(del_su_a)*diag(del_wu_a)*en;
-            if r ~= 0
-                omega_3 = rhol + foo;
-            end
+            psil = bound_cl*(zl - sigma*mu*Tl1*er + Tl1*diag(del_tl_a)*diag(del_zl_a)*er);
+            psiu = bound_cu*(zu - sigma*mu*Tu1*er + Tu1*diag(del_tu_a)*diag(del_zu_a)*er);
+            phil = bound_xl*(wl - Sl1*sigma*mu*en + Sl1*diag(del_sl_a)*diag(del_wl_a)*en);
+            phiu = bound_xu*(wu - Su1*sigma*mu*en + Su1*diag(del_su_a)*diag(del_wu_a)*en);
+            omega_1 = -H*x -c + A'*y + bound_xl*wl - bound_xu*wu - bound_xl*(phil + Sl1*Wl*betal) + bound_xu*(phiu + Su1*Wu*betau);
+            xi = -psil + psiu - bound_cl*Tl1*Zl*rhol + bound_cu*Tu1*Zu*rhou;
+            omega_3 = psi1*xi;
             omega = [omega_1;omega_2;omega_3];
-            sol = (-omega\mat)';
+            sol = mat\omega;
             del_x = sol(1:n);
             del_y = -sol(n+1:n+m);
-            del_z = -sol(n+m+1:n+m+r);
             del_sl = bound_xl*(del_x + betal);
             del_su = bound_xu*(-del_x + betau);
-            del_wl = bound_xl*(-wl + sigma*mu*Sl1*en - Sl1*diag(del_sl_a)*diag(del_wl_a)*en -Sl1*Wl*del_sl);
-            del_wu = bound_xu*(-wu + sigma*mu*Su1*en - Su1*diag(del_su_a)*diag(del_wu_a)*en - Su1*Wu*del_su);
+            del_wl = bound_xl*(-phil -Sl1*Wl*del_sl);
+            del_wu = bound_xu*(-phiu - Su1*Wu*del_su);
         
-            del_tl = bound_cl*((-del_z + xi)\psi)';
-            del_tu = bound_cu*(-del_tl + rhou + rhol);
-            del_zu = bound_cu*(-zu + sigma*mu*Tu1*er - Tu1*diag(del_tu_a)*diag(del_zu_a)*er -Tu1*Zu*del_tu);
-            del_zl = bound_cl*(del_z + bound_cu*del_zu);
+            del_tl = bound_cl*(C*del_x + rhol);
+            del_tu = bound_cu*(-C*del_x + rhou);
+            del_zu = bound_cu*(-psiu -Tu1*Zu*del_tu);
+            del_zl = bound_cl*(-psil - Tl1*Zl*del_tl);
             
             % calculate step length alpha
             step = [del_sl; del_su; del_wl; del_wu; del_tl; del_tu; del_zl; del_zu];
@@ -291,9 +277,14 @@ function [x,y,wl, wu, sl,su, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, 
             su = su + alpha*del_su;
             tl = tl + alpha*del_tl;
             tu = tu + alpha*del_tu;
-    
-            tao = tao/2;
-        end
 
+            mu = (sl'*wl + su'*wu + tl'*zl + tu'*zu)/(2*(n+r));
+        end
+        if mu < 1*10^(-15)
+            break;
+        end
+        p = cutest_setup;
+        opt = cutest_obj(x);
+        cutest_terminate
     end
 end
