@@ -8,15 +8,15 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bou
 
     % sl = ones(n,1);
     % su = ones(n,1);
-    wl = rand(n,1);
-    wu = rand(n,1);
+    wl = 0.01*ones(n,1);
+    wu = 0.01*ones(n,1);
 
     tl = ones(r,1);
     tu = ones(r,1);
     zl = ones(r,1);
     zu = ones(r,1);
 
-    x = rand(n,1);
+    x = 0.1*ones(n,1);
     y = rand(m,1);
 
     %Tl1 = diag(ones(r,1)./tl);
@@ -46,10 +46,11 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bou
     end
     index_l = find(index_l);
     index_u = find(index_u);
-    bound_xl = sparse(index_l, index_l, zeros(size(index_l, 2)));
-    bound_xu = sparse(index_u, index_u, zeros(size(index_u, 2)));
-    sl = bound_xl*rand(n,1);
-    su = bound_xu*rand(n,1);
+    bound_xl = sparse(index_l, index_l, ones(size(index_l)), n, n);
+    bound_xu = sparse(index_u, index_u, ones(size(index_u)), n, n);
+
+    sl = bound_xl*ones(n,1);
+    su = bound_xu*ones(n,1);
     Sl1 = zeros(n);
     Su1 = zeros(n);
     for i = 1:n
@@ -66,12 +67,10 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bou
     % % Differentiate between the case where inequality constraints exist
     % % or not
      if r == 0
-        bound_cl = NaN;
-        bound_cu = NaN;
+        bound_cl = 0;
+        bound_cu = 0;
     
-        %helping variables
-        % Sl = diag(sl);
-        % Su = diag(su);
+        % helping variables
         betal = bound_xl*(x-xl-sl);
         betau = bound_xu*(-x+xu-su);
         Hphi = H + Sl1*Wl + Su1*Wu;

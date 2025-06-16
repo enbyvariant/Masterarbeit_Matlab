@@ -70,20 +70,18 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bou
         bound_cl = 0;
         bound_cu = 0;
     
-        %helping variables
-        % Sl = diag(sl);
-        % Su = diag(su);
+        % helping variables
         betal = bound_xl*(x-xl-sl);
         betau = bound_xu*(-x+xu-su);
         Hphi = H + Sl1*Wl + Su1*Wu;
 
         % % calculate the affine step with given iterate
-        mat = [Hphi A'; A zeros(m)]
+        mat = [Hphi A'; A zeros(m)];
         omega_1 = -H*x - c + A'*y - bound_xl*Sl1*Wl*betal + bound_xu*Su1*Wu*betau;
         omega_2 = -(A*x -b);
-        omega = [omega_1; omega_2]
+        omega = [omega_1; omega_2];
         sol = mat\omega;
-        del_x = sol(1:n)
+        del_x = sol(1:n);
         %del_y = sol(n+1:n+m);
 
         % calculate all variables of expanded system
@@ -100,21 +98,21 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bou
         wu = bound_xu*max(abs(wu + del_wu),en);
 
     else
-        bound_cl = eye(r);
-        bound_cu = eye(r);
+        index_cl = ones(1,r);
+        index_cu = ones(1,r);
         for i = 1:r
             if cl(i) < -10^3
                 cl(i) = 0;
                 tl(i) = 0;
                 zl(i) = 0;
-                bound_cl(i,i) = 0;
+                index_cl(i) = 0;
 
             end
             if cu(i) > 10^3
                 cu(i) = 0;
                 tu(i) = 0;
                 zu(i) = 0;
-                bound_cu(i,i) = 0;
+                index_cu(i) = 0;
             end
         end
         Tl1 = bound_cl*Tl1;

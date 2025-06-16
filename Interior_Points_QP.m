@@ -122,7 +122,7 @@ function [x,y,wl, wu, sl,su, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, 
             end
             
             % update iterate
-            x = x + alpha*del_x;
+            x = x + alpha*del_x
             y = y + alpha*del_y;
 
             sl = bound_xl*(sl + alpha*del_sl);
@@ -132,7 +132,7 @@ function [x,y,wl, wu, sl,su, mu] = Interior_Points_QP(iter, A, b, xl, xu, H, c, 
             wu = bound_xu*(wu + alpha*del_wu);
             
 
-            mu = (sl'*wl+su'*wu)/(2*n);
+            mu = (sl'*wl+su'*wu)/(2*n)
             if mu < 1*10^(-15)
                 break;
             end
