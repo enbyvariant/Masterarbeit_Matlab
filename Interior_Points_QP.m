@@ -143,8 +143,7 @@ function [x,y,wl, wu, sl,su, mu_n, obj, iterations] = Interior_Points_QP(iter, A
 
             mu_n = (sl'*wl+su'*wu)/(2*n);
             obj = cutest_obj(x);
-            data = [iterations obj];
-            disp(data);
+            data = [data; iterations obj mu_n mu-mu_n];
 
         else
             % Case Inequalities do exist
