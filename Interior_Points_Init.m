@@ -55,6 +55,8 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bou
      if r == 0
         bound_cl = 0;
         bound_cu = 0;
+        tl = [];
+        tu = [];
     
         % helping variables
         betal = bound_xl*(x-xl-sl);

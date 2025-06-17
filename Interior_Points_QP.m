@@ -1,7 +1,7 @@
 % Implementation of the Interior Points Method for LPs
 % jetzt auch in github
 
-function [x,y,wl, wu, sl,su, mu, opt, iterations] = Interior_Points_QP(iter, A, b, xl, xu, H, c, cl, cu, C)
+function [x,y,wl, wu, sl,su, mu_n, obj, iterations] = Interior_Points_QP(iter, A, b, xl, xu, H, c, cl, cu, C)
     
     % Initial values
     n = size(A, 2);
@@ -23,11 +23,16 @@ function [x,y,wl, wu, sl,su, mu, opt, iterations] = Interior_Points_QP(iter, A, 
     % bound_xu = zeros(4);
     iterations = 0;
 
+    data = [];
+    p = cutest_setup;
+
+
     while 1
-        iterations = iterations + 1;
         if iterations > iter
             break;
         end
+        iterations = iterations + 1;
+
         % if inequalities do not exist, use smaller equation system
         if r == 0
            % Case: Inequalities do not exist
@@ -136,7 +141,10 @@ function [x,y,wl, wu, sl,su, mu, opt, iterations] = Interior_Points_QP(iter, A, 
             wu = bound_xu*(wu + alpha*del_wu);
             
 
-            mu = (sl'*wl+su'*wu)/(2*n);
+            mu_n = (sl'*wl+su'*wu)/(2*n);
+            obj = cutest_obj(x);
+            data = [iterations obj];
+            disp(data);
 
         else
             % Case Inequalities do exist
@@ -155,7 +163,9 @@ function [x,y,wl, wu, sl,su, mu, opt, iterations] = Interior_Points_QP(iter, A, 
             end
             Wl = diag(wl);
             Wu = diag(wu);
-    
+            
+            
+
             Tl1 = zeros(r);
             Tu1 = zeros(r);
             for i = 1:r
@@ -278,13 +288,16 @@ function [x,y,wl, wu, sl,su, mu, opt, iterations] = Interior_Points_QP(iter, A, 
             tl = tl + alpha*del_tl;
             tu = tu + alpha*del_tu;
 
-            mu = (sl'*wl + su'*wu + tl'*zl + tu'*zu)/(2*(n+r));
+            mu_n = (sl'*wl + su'*wu + tl'*zl + tu'*zu)/(2*(n+r));
+            obj = cutest_obj(x);
+
+            data = [data; iterations obj mu_n mu-mu_n];
         end
-        if mu < 1*10^(-15)
+        if mu_n < 1*10^(-14)
             break;
         end
-        p = cutest_setup;
-        opt = cutest_obj(x);
-        cutest_terminate
     end
+    fprintf('      Iteration  objective    mu-value  difference in mu\n');
+    disp(data);
+    cutest_terminate
 end

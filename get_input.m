@@ -32,15 +32,12 @@ function [A, b, H, c, c_0, xl, xu, C, cl, cu] = get_input()
     C = zeros(r,n);
     cl = zeros(r,1);
     cu = zeros(r,1);
-    
     % variables for equalities
     k = 0;
     A = zeros(m,n);
     b = zeros(m,1);
 
     for j = 1:m+r
-        prob.cl
-        prob.cu
         % constraint of the form Cx <= cu
         if prob.cl(j) < - 10^3
             i = i + 1;
