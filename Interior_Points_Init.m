@@ -12,7 +12,7 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bou
     zl = ones(r,1);
     zu = ones(r,1);
 
-    x = ones(n,1);
+    x = rand(n,1);
     y = rand(m,1);
 
     % cancel lines where x-component has no upper or no lower bound
@@ -167,6 +167,17 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bou
 
         zl = bound_cl*max(abs(zl + del_zl),ones(r,1));
         zu = bound_cu*max(abs(zu + del_zu),ones(r,1));
+        
+        % Start
+        % x = start(1:n);
+        % sl = start(n+1:2*n);
+        % su = start(2*n+1:3*n);
+        % wl = start(3*n+1:4*n);
+        % wu = start(4*n+1:5*n);
+        % tl = start(5*n+1:5*n+r);
+        % tu = start(5*n+r+1:5*n+2*r);
+        % zl = start(5*n+2*r+1:5*n+3*r);
+        % zu = start(5*n+3*r+1:5*n+4*r);
 
     end
     

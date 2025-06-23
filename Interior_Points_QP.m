@@ -1,7 +1,7 @@
 % Implementation of the Interior Points Method for LPs
 % jetzt auch in github
 
-function [x,y,wl, wu, sl,su, mu_n, obj, iterations] = Interior_Points_QP(iter, A, b, xl, xu, H, c, cl, cu, C)
+function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior_Points_QP(iter, A, b, xl, xu, H, c, cl, cu, C)
     
     % Initial values
     n = size(A, 2);
@@ -9,7 +9,7 @@ function [x,y,wl, wu, sl,su, mu_n, obj, iterations] = Interior_Points_QP(iter, A
     r = size(C,1);
     en = ones(n,1);
     er = ones(r,1);
-    tao = 0.9;
+    tao = 0.995;
 
     % Compute starting point
     [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bound_cu] = Interior_Points_Init(H, A, b, c, xl, xu, cl, cu, C);
@@ -292,11 +292,11 @@ function [x,y,wl, wu, sl,su, mu_n, obj, iterations] = Interior_Points_QP(iter, A
 
             data = [data; iterations obj mu_n mu-mu_n];
         end
-        if mu_n < 1*10^(-14)
+        if mu_n < 1*10^(-15)
             break;
         end
     end
-    fprintf('      Iteration  objective    mu-value  difference in mu\n');
+    fprintf('      Iteration  objective     mu-value  difference in mu\n');
     disp(data);
     cutest_terminate
 end

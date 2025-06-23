@@ -39,7 +39,7 @@ function [x,lambda,s] = Interior_Points_LP(iter, A, b, c)
          sol = linsolve(mat, [-r_c;-r_b;-X*S*e]);
 
          delta_x = sol(1:n);
-         delta_lambda = sol(n+1:m+n);
+         %delta_lambda = sol(n+1:m+n);
          delta_s = sol(m+n+1:2*n+m);
         
         % Determine affine primal step length alpha_pri_aff
