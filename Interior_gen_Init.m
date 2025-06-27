@@ -1,4 +1,4 @@
-function [x,y,sl,su,wl,wu,tl,tu,zl,zu,bound_xl,bound_xu,bound_cl,bound_cu] = Interior_gen_Init()
+function [x,y,sl,su,wl,wu,tl,tu,zl,zu,bound_xl,bound_xu,bound_cl,bound_cu, equ, inequ,n, m, r] = Interior_gen_Init()
     
     p = cutest_setup;
     n = p.n;
@@ -22,7 +22,7 @@ function [x,y,sl,su,wl,wu,tl,tu,zl,zu,bound_xl,bound_xu,bound_cl,bound_cu] = Int
     for i = 1:p.m
         if p.cl(i) == 0 && p.cu(i) == 0
             j = j+1;
-        equ(j) = i;
+            equ(j) = i;
         else
             k = k+1;
             inequ(k) = i;

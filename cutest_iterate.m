@@ -1,25 +1,26 @@
-function [grad, H, cons_e, cons_i, cons_e_grad, cons_i_grad] = cutest_iterate(x,y,sl,su,tl,tu,wl,wu,zl,zu,n,m)
-%UNTITLED3 Summary of this function goes here
-%   Detailed explanation goes here
-p = cutest_setup;
-j = 0;
-k = 0;
-i = 0;
-equ = zeros(m);
-for i = 1:p.m
-    if p.cl(i) == 0 && p.cu(i) == 0
-        j = j+1;
-        equ(j) = i;
-    else
-        k = k+1;
-        inequ(k) = i;
-    end
+function [grad, H, cons_e, cons_i, cons_e_grad, cons_i_grad, obj] = cutest_iterate(x,y,zl,zu,equ,inequ)
+% Gives out the values for the current iterate
+%  Using the cutest environment
+    n = size(x,1);
+    m = size(equ,1);
+    r = size(inequ,1);
 
+    p = cutest_setup;
+    
+    [cons, C] = cutest_cons(x);
+    cons_e = cons(equ);
+    cons_i = cons(inequ);
+    cons_e_grad = C(equ,equ);
+    cons_i_grad = C(inequ,inequ);
 
-end
+    lambda = zeros(m+r,1);
+    lambda(equ) = y;
+    lambda(inequ) = zl - zu;
 
+    [L, grad] = cutest_lag(x,lambda);
+    H = cutest_hess(x,lambda);
+    
+    obj = cutest_obj(x);
 
-grad = cutest_grad(x);
-H = cutest_hess(x,lambda);
-outputArg2 = inputArg2;
+    cutest_terminate;
 end
