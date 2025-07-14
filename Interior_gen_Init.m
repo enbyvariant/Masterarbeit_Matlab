@@ -1,13 +1,13 @@
-function [x,y,sl,su,wl,wu,tl,tu,zl,zu,bound_xl,bound_xu,bound_cl,bound_cu, equ, inequ,n, m, r] = Interior_gen_Init()
+function [x,y,sl,su,wl,wu,tl,tu,zl,zu,bound_xl,bound_xu,bound_cl,bound_cu, equ, inequ,n, m, r, xl, xu, cl, cu] = Interior_gen_Init()
     
     p = cutest_setup;
     n = p.n;
-    m = prob.m;
+    m = p.m;
     r = 0;
     
     % compute correct dimensions for m and r
     for i = 1:m
-        if prob.cl(i) || prob.cu(i)
+        if p.cl(i) || p.cu(i)
         r = r + 1;
         m = m - 1;
         end
@@ -68,4 +68,5 @@ function [x,y,sl,su,wl,wu,tl,tu,zl,zu,bound_xl,bound_xu,bound_cl,bound_cu, equ, 
     zl = bound_cl*ones(r,1);
     zu = bound_cu*ones(r,1);
 
+    cutest_terminate;
 end
