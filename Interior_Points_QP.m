@@ -163,8 +163,6 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             Wl = diag(wl);
             Wu = diag(wu);
             
-            
-
             Tl1 = zeros(r);
             Tu1 = zeros(r);
             for i = 1:r
@@ -192,7 +190,7 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             mat = [Hphi     A'         C';
                     A    zeros(m)   zeros(m,r);
                     C    zeros(r,m)   -psi1   ];
-            omega_1 = -H*x - c + A'*y - bound_xl*Sl1*Wl*betal + bound_xu*Su1*Wu*betau;
+            omega_1 = -H*x - c + A'*y + C'*(zl - zu) - bound_xl*Sl1*Wl*betal + bound_xu*Su1*Wu*betau;
             omega_2 = -(A*x -b);
             xi = -zl - bound_cl*Tl1*Zl*rhol + zu + bound_cu*Tu1*Zu*rhou;
             omega_3 = psi1*xi;
@@ -245,7 +243,7 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             psiu = bound_cu*(zu - sigma*mu*Tu1*er + Tu1*diag(del_tu_a)*diag(del_zu_a)*er);
             phil = bound_xl*(wl - Sl1*sigma*mu*en + Sl1*diag(del_sl_a)*diag(del_wl_a)*en);
             phiu = bound_xu*(wu - Su1*sigma*mu*en + Su1*diag(del_su_a)*diag(del_wu_a)*en);
-            omega_1 = -H*x -c + A'*y + bound_xl*wl - bound_xu*wu - bound_xl*(phil + Sl1*Wl*betal) + bound_xu*(phiu + Su1*Wu*betau);
+            omega_1 = -H*x -c + A'*y + C'*(zl-zu) + bound_xl*wl - bound_xu*wu - bound_xl*(phil + Sl1*Wl*betal) + bound_xu*(phiu + Su1*Wu*betau);
             xi = -psil + psiu - bound_cl*Tl1*Zl*rhol + bound_cu*Tu1*Zu*rhou;
             omega_3 = psi1*xi;
             omega = [omega_1;omega_2;omega_3];

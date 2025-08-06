@@ -71,8 +71,8 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
     wl = a_dual(m+1:m+n);
     wu = zeros(n,1);
     
-    delta_pri = 3/2*max([-sl;-su;-wl;-wu;0]);
-    delta_dual = -3/2*max([wl;wu;zl;zu; 0]);
+    delta_pri = 3/2*max([-sl;-su;-tl;-tu;0]);
+    delta_dual = 3/2*max([-wl;-wu;-zl;-zu; 0]);
     
     sl = bound_xl*(sl + delta_pri * en);
     su = bound_xu*(su + delta_pri * en);
@@ -94,4 +94,40 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
     wu = bound_xu*(wu + delta_dual * en);
     zl = bound_cl*(zl + delta_dual * er);
     zu = bound_cu*(zu + delta_dual * er);
+    
+
+    % Failsave, if some linear equation system is impossible to solve
+    if any(isnan(x))
+        x = ones(n,1);
+    end
+    if any(isnan(sl))
+        sl = bound_xl*ones(n,1);
+    end
+    if any(isnan(su))    
+        su = bound_xu*ones(n,1);
+    end
+    if any(isnan(tl))
+
+        tl = bound_cl*ones(r,1);
+    end
+    if any(isnan(tu))
+        tu = bound_cu*ones(r,1);
+    end
+    if any(isnan(wl))
+        wl = bound_xl*ones(n,1);
+    end
+
+    if any(isnan(wu))
+        wu = bound_xu*ones(n,1);
+    end
+    if any(isnan(zl))
+        zl = bound_cl*ones(r,1);
+    end
+    if any(isnan(zu))
+        zu = bound_cu*ones(r,1);
+    end
+    if any(isnan(y))
+        y = ones(m,1);
+    end
+
 end
