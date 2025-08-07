@@ -1,18 +1,15 @@
-function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bound_cu] = Init_LP(A, C, cl, cu, xl, xu, b, c)
+function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bound_cu] = Init_LP(A, C, cl, cu, xl, xu, b, c, dim)
 %
 % 
-    % Initial values
-    n = size(A, 2);
-    m = size(A, 1);
-    r = size(C, 1);
-    en = ones(n,1);
-    er = ones(r,1);
+    % Helping vectors
+    en = ones(dim.n,1);
+    er = ones(dim.r,1);
     
-    index_l = ones(1,n);
-    index_u = ones(1,n);
-    wl = ones(n,1);
-    wu = ones(n,1);
-    for i = 1:n
+    index_l = ones(1,dim.n);
+    index_u = ones(1,dim.n);
+    wl = ones(dim.n, 1);
+    wu = ones(dim.n, 1);
+    for i = 1:dim.n
         if xl(i) < -10^3
             xl(i) = 0;
             wl(i) = 0; 
@@ -26,16 +23,16 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
     end
     index_l = find(index_l);
     index_u = find(index_u);
-    bound_xl = sparse(index_l, index_l, ones(size(index_l)), n, n);
-    bound_xu = sparse(index_u, index_u, ones(size(index_u)), n, n);
+    bound_xl = sparse(index_l, index_l, ones(size(index_l)), dim.n, dim.n);
+    bound_xu = sparse(index_u, index_u, ones(size(index_u)), dim.n, dim.n);
 
     %bound_xu = zeros(n);
     
-    index_cl = ones(1,r);
-    index_cu = ones(1,r);
-    zl = ones(r,1);
-    zu = ones(r,1);
-    for i = 1:r
+    index_cl = ones(1, dim.r);
+    index_cu = ones(1, dim.r);
+    zl = ones(dim.r, 1);
+    zu = ones(dim.r, 1);
+    for i = 1:dim.r
         if cl(i) < -10^3
             cl(i) = 0;
             zl(i) = 0;
@@ -49,27 +46,29 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
     end
     index_cl = find(index_cl);
     index_cu = find(index_cu);
-    bound_cl = sparse(index_cl, index_cl, ones(size(index_cl)), r, r);
-    bound_cu = sparse(index_cu, index_cu, ones(size(index_cu)), r, r);
+    bound_cl = sparse(index_cl, index_cl, ones(size(index_cl)), dim.r, dim.r);
+    bound_cu = sparse(index_cu, index_cu, ones(size(index_cu)), dim.r, dim.r);
 
     % Compute starting point
-    M = [A zeros(m,n+r);2*bound_xl*eye(n) -eye(n) zeros(n,r);2*bound_cl*C zeros(r,n) -eye(r)];
-    vector = [b; bound_xl*xl + bound_xu*xu; bound_cl*cl + bound_cu*cu];
-
-    a_prim = M' * (M*M'\vector);
-    x = a_prim(1:n);
+    M = [A zeros(dim.m, dim.n + dim.r);
+        2*eye(dim.n) -eye(dim.n) zeros(dim.n, dim.r);
+        2*C zeros(dim.r, dim.n) -eye(dim.r)];
+    vector = [b; bound_xl*xl + bound_xu*xu; bound_cl*cl + bound_cu*cu]; 
+    temp = (M*M'\vector);
+    a_prim = M' * temp;
+    x = a_prim(1:dim.n);
     sl = bound_xl*(x - xl);
     su = bound_xu*(-x + xu);
     tl = bound_cl*(C*x - cl);
     tu = bound_cu*(-C*x + cu);
     
-    N = [A' eye(n) C'];
+    N = [A' -eye(dim.n) C'];
     a_dual = N' * (N*N'\c);
-    y = a_dual(1:m);
-    zl = a_dual(m+n+1:m+n+r);
-    zu = zeros(r,1);
-    wl = a_dual(m+1:m+n);
-    wu = zeros(n,1);
+    y = a_dual(1:dim.m);
+    zl = a_dual(dim.m + dim.n + 1 : dim.m + dim.n + dim.r);
+    zu = zeros(dim.r, 1);
+    wl = a_dual(dim.m + 1 : dim.m + dim.n);
+    wu = zeros(dim.n, 1);
     
     delta_pri = 3/2*max([-sl;-su;-tl;-tu;0]);
     delta_dual = 3/2*max([-wl;-wu;-zl;-zu; 0]);
@@ -98,36 +97,36 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
 
     % Failsave, if some linear equation system is impossible to solve
     if any(isnan(x))
-        x = ones(n,1);
+        x = ones(dim.n,1);
     end
     if any(isnan(sl))
-        sl = bound_xl*ones(n,1);
+        sl = bound_xl*ones(dim.n,1);
     end
     if any(isnan(su))    
-        su = bound_xu*ones(n,1);
+        su = bound_xu*ones(dim.n,1);
     end
     if any(isnan(tl))
 
-        tl = bound_cl*ones(r,1);
+        tl = bound_cl*ones(dim.r,1);
     end
     if any(isnan(tu))
-        tu = bound_cu*ones(r,1);
+        tu = bound_cu*ones(dim.r,1);
     end
     if any(isnan(wl))
-        wl = bound_xl*ones(n,1);
+        wl = bound_xl*ones(dim.n,1);
     end
 
     if any(isnan(wu))
-        wu = bound_xu*ones(n,1);
+        wu = bound_xu*ones(dim.n,1);
     end
     if any(isnan(zl))
-        zl = bound_cl*ones(r,1);
+        zl = bound_cl*ones(dim.r,1);
     end
     if any(isnan(zu))
-        zu = bound_cu*ones(r,1);
+        zu = bound_cu*ones(dim.r,1);
     end
     if any(isnan(y))
-        y = ones(m,1);
+        y = ones(dim.m,1);
     end
 
 end

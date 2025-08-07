@@ -1,17 +1,17 @@
-function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, A, b, xl, xu, c, cl, cu, C)
+function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, A, b, xl, xu, c, cl, cu, C, dim)
     
     % Initial values
-    n = size(A, 2);
-    m = size(A, 1);
-    r = size(C,1);
+    n = dim.n;
+    m = dim.m;
+    r = dim.r;
     en = ones(n,1);
     er = ones(r,1);
-    tao = 0.995;
+    eta = 0.995;
 
     % Compute starting point
-    [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bound_cu] = Init_LP(A, C, cl, cu, xl, xu, b, c);
+    [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bound_cu] = Init_LP(A, C, cl, cu, xl, xu, b, c, dim);
     iterations = 0;
-    data = [];
+    data = zeros(iter,4);
     p = cutest_setup;
 
 
@@ -91,34 +91,13 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             % calculate primal affine step length
 
             step = [del_sl_a; del_su_a; del_wl_a; del_wu_a];
-
             curr = [sl; su; wl; wu];
-
-            index = find(step < 0);
-            if isempty(index)
-               alpha_pri = 1;
-
-            else
-                alpha_pri = min(curr(index)./(-step(index)));
-                if alpha_pri > 1
-                    alpha_pri = 1;
-                end
-            end
+            alpha_pri = step_length(step,curr,1);
 
             % calculate dual affine step length
             step = [del_tl_a; del_tu_a; del_zl_a; del_zu_a];
             curr = [tl; tu; zl; zu];
-            index = find(step < 0);
-            if isempty(index)
-               alpha_dual = 1;
-
-            else
-                alpha_dual = min(curr(index)./(-step(index)));
-                if alpha_dual > 1
-                    alpha_dual = 1;
-                end
-            end
-            
+            alpha_dual = step_length(step, curr, eta);
             %------------------------
             % calculate affine duality measure
             sl_a = sl + alpha_pri*del_sl_a;
@@ -145,7 +124,7 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             omega_3 = psi1*xi;
             omega = [omega_1;omega_2;omega_3];
 
-            % caöculate new step
+            % calculate new step
             sol = mat\omega;
             del_x = sol(1:n);
             del_y = -sol(n+1:n+m);
@@ -160,37 +139,17 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             del_zl = bound_cl*(-psil - Tl1*Zl*del_tl);
             
             %----------------------------
-            % calculate primal affine step length
+            % calculate primal step length
 
             step = [del_sl; del_su; del_wl; del_wu];
-
             curr = [sl; su; wl; wu];
+            alpha_pri = step_length(step,curr,eta);
 
-            index = find(step < 0);
-            if isempty(index)
-               alpha_pri = 1;
-
-            else
-                alpha_pri = tao*min(curr(index)./(-step(index)));
-                if alpha_pri > 1
-                    alpha_pri = 1;
-                end
-            end
-
-            % calculate dual affine step length
+            % calculate dual step length
             step = [del_tl; del_tu; del_zl; del_zu];
             curr = [tl; tu; zl; zu];
-            index = find(step < 0);
-            if isempty(index)
-               alpha_dual = 1;
+            alpha_dual = step_length(step, curr, eta);
 
-            else
-                alpha_dual = tao*min(curr(index)./(-step(index)));
-                if alpha_dual > 1
-                    alpha_dual = 1;
-                end
-            end
-            
             % update iterate
             x = x + alpha_pri*del_x;
             y = y + alpha_dual*del_y;
@@ -206,7 +165,7 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             mu_n = (sl'*wl + su'*wu + tl'*zl + tu'*zu)/(2*(n+r));
             obj = cutest_obj(x);
 
-            data = [data; iterations obj mu_n mu-mu_n];
+            data(iterations, :) = [iterations obj mu_n mu-mu_n];
         if mu_n < 1*10^(-15)
             break;
         end

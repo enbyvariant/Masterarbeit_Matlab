@@ -1,4 +1,4 @@
-function [A, b, H, c, c_0, xl, xu, C, cl, cu] = get_input()
+function [obj_f, x_b, equ, ineq, dim] = get_input()
     
     prob = cutest_setup();
     n = prob.n;
@@ -12,14 +12,17 @@ function [A, b, H, c, c_0, xl, xu, C, cl, cu] = get_input()
             m = m - 1;
         end
     end
+    dim = struct('n', n, 'm', m, 'r', r);
     
     % variables directly available from cutest
     const = -cutest_cons(zeros(n,1));
     c_0 = cutest_obj(zeros(n,1));
     xl = sparse(prob.bl);
     xu = sparse(prob.bu);
+    x_b = struct('xl', xl, 'xu', xu);
     H = cutest_hess(prob.x, prob.v);
-
+    
+    % compute all constraint multipliers and the linear part of obj func
     M = zeros(m+r,n);
     c = zeros(n,1);
     for i = 1:n
@@ -64,13 +67,16 @@ function [A, b, H, c, c_0, xl, xu, C, cl, cu] = get_input()
     
     H = sparse(H);
     c = sparse(c);
+    obj_f = struct('H', H, 'c', c, 'c_0', c_0);
 
     C = sparse(C);
     cl = sparse(cl);
     cu = sparse(cu);
+    ineq = struct('C', C, 'cl', cl, 'cu', cu);
 
     A = sparse(A);
     b = sparse(b);
+    equ = struct('A', A, 'b', b);
 
     cutest_terminate;
 end
