@@ -1,26 +1,23 @@
-function [grad, H, cons_e, cons_i, cons_e_grad, cons_i_grad, obj] = cutest_iterate(x,y,zl,zu,equ,inequ)
+function [nlp, obj] = cutest_iterate(it,nlp, dim)
 % Gives out the values for the current iterate
 %  Using the cutest environment
-    n = size(x,1);
-    m = size(equ,1);
-    r = size(inequ,1);
 
     p = cutest_setup;
     
-    [cons, C] = cutest_cons(x);
-    cons_e = cons(equ);
-    cons_i = cons(inequ);
-    cons_e_grad = C(equ,equ);
-    cons_i_grad = C(inequ,inequ);
+    [cons, Jacobian] = cutest_cons(it.x);
+    nlp.cons_e = cons(nlp.equ);
+    nlp.cons_i = cons(nlp.inequ);
+    nlp.A = Jacobian(nlp.equ,nlp.equ);
+    nlp.C = Jacobian(nlp.inequ,nlp.inequ);
 
-    lambda = zeros(m+r,1);
-    lambda(equ) = y;
-    lambda(inequ) = zl - zu;
+    lambda = zeros(dim.m+dim.r,1);
+    lambda(nlp.equ) = it.y;
+    lambda(nlp.inequ) = it.zl - it.zu;
 
-    [L, grad] = cutest_lag(x,lambda);
-    H = cutest_hess(x,lambda);
+    [nlp.L, nlp.grad] = cutest_lag(it.x,lambda);
+    nlp.H = cutest_hess(it.x,lambda);
     
-    obj = cutest_obj(x);
+    obj = cutest_obj(it.x);
 
     cutest_terminate;
 end

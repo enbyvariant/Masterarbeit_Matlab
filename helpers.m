@@ -1,35 +1,49 @@
-function [help] = helpers(dim, obj, ineq, equ, x_b, it)
+function [help] = helpers(dim, nlp, it)
 %   UNTITLED3 Summary of this function goes here
 %   Detailed explanation goes here
 
-    help.beta_l = it.x - x_b.xl - it.sl;
-    help.beta_u = -it.x + x_b.xu - it.su;
-    help.rho_l = ineq.C*x - ineq.cl - it.tl;
-    help.rho_u = -ineq.C*x + ineq.cu - it.tu;
+    help.beta_l = it.bound_xl*(it.x - nlp.xl - it.sl);
+    help.beta_u = it.bound_xu*(-it.x + nlp.xu - it.su);
+    help.rho_l = it.bound_cl*(nlp.C*it.x - nlp.cl - it.tl);
+    help.rho_u = it.bound_cu*(-nlp.C*it.x + nlp.cu - it.tu);
+    
 
-    Sl1 = zeros(n);
-    Su1 = zeros(n);
-    for i = 1:n
-        if sl(i) ~= 0
-            Sl1(i,i) = 1/sl(i);
+    help.kappa = nlp.A * it.x - nlp.b;
+
+    help.Sl1 = zeros(dim.n);
+    help.Su1 = zeros(dim.n);
+    for i = 1:dim.n
+        if it.sl(i) ~= 0
+            help.Sl1(i,i) = 1/it.sl(i);
         end
-        if su(i) ~= 0
-            Su1(i,i) = 1/su(i);
+        if it.su(i) ~= 0
+            help.Su1(i,i) = 1/it.su(i);
         end
     end
-    Wl = diag(wl);
-    Wu = diag(wu);
+    help.Wl = it.bound_xl*diag(it.wl);
+    help.Wu = it.bound_xu*diag(it.wu);
             
-    Tl1 = zeros(r);
-    Tu1 = zeros(r);
-    for i = 1:r
-        if tl(i) ~= 0
-            Tl1(i,i) = 1/tl(i);
+    help.Tl1 = zeros(dim.r);
+    help.Tu1 = zeros(dim.r);
+    for i = 1:dim.r
+        if it.tl(i) ~= 0
+            help.Tl1(i,i) = 1/it.tl(i);
         end
-        if tu(i) ~= 0
-            Tu1(i,i) = 1/tu(i);
+        if it.tu(i) ~= 0
+            help.Tu1(i,i) = 1/it.tu(i);
         end
     end
-    Zl = diag(zl);
-    Zu = diag(zu);   
+    help.Zl = it.bound_cl*diag(it.zl);
+    help.Zu = it.bound_cu*diag(it.zu);
+
+    help.Hphi = it.bound_xl*help.Sl1*help.Wl + it.bound_xu*help.Su1*help.Wu; %nlp.H + 
+
+    psi = it.bound_cl*help.Tl1*help.Zl + it.bound_cu*help.Tu1*help.Zu;
+    help.PSI1 = zeros(dim.r);
+    for i = 1:dim.r
+        if psi(i,i) ~= 0
+            help.PSI1(i,i) = 1/psi(i,i);
+        end
+    end
+    
 end

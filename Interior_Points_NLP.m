@@ -3,7 +3,7 @@ function [x,y,sl,su,wl,wu,tl, tu,zl,zu,obj] = Interior_Points_NLP(max_iter)
 
     
     % Initialization
-    [x,y,sl,su,wl,wu,tl,tu,zl,zu,bound_xl,bound_xu,bound_cl,bound_cu, equ, inequ,n, m, r, xl, xu, cl, cu] = Interior_gen_Init();
+    [it, dim, nlp] = Interior_gen_Init();
     en = ones(n,1);
     er = ones(r,1);
 
@@ -17,8 +17,8 @@ function [x,y,sl,su,wl,wu,tl, tu,zl,zu,obj] = Interior_Points_NLP(max_iter)
         end
 
         % duality measure
-        mu = (sl'*wl + su'*wu + tl'*zl + tu'*zu)/(2*m + 2*r);
-        if mu < 10^(-15)
+        it.mu = (sl'*wl + su'*wu + tl'*zl + tu'*zu)/(2*m + 2*r);
+        if it.mu < 10^(-15)
             break
         end
         % calculate variables for new iterate
@@ -53,7 +53,7 @@ function [x,y,sl,su,wl,wu,tl, tu,zl,zu,obj] = Interior_Points_NLP(max_iter)
         for i = 1:r
             PSI1(i,i) = 1/PSI(i,i);
         end
-
+        [help] = helpers(dim, nlp, it);
         % calculate step direction
         [grad, H, cons_e, cons_i, cons_e_grad, C, obj] = cutest_iterate(x,y,zl,zu,equ,inequ);
         beta_l = x - xl - sl;
@@ -65,7 +65,7 @@ function [x,y,sl,su,wl,wu,tl, tu,zl,zu,obj] = Interior_Points_NLP(max_iter)
         psi_l = zl - Tl1*mu*er;
         psi_u = zu - Tu1*mu*er;
 
-        mat = [H + PHI   cons_e_grad'  C';
+        mat = [help.Hphi   cons_e_grad'  C';
              cons_e_grad   zeros(m)    zeros(m,r);
              C  zeros(r,m)   -PSI1];
         nu = - grad - phi_l -Sl1*Wl*beta_l + phi_u + Su1*Wu*beta_u;

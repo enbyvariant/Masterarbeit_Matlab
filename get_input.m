@@ -1,4 +1,4 @@
-function [obj_f, x_b, equ, ineq, dim] = get_input()
+function [nlp, dim] = get_input()
     
     prob = cutest_setup();
     n = prob.n;
@@ -6,7 +6,7 @@ function [obj_f, x_b, equ, ineq, dim] = get_input()
     r = 0;
     
     % compute correct dimensions for m and r
-    for i = 1:m
+    for i = 1:prob.m
         if prob.cl(i) || prob.cu(i)
             r = r + 1;
             m = m - 1;
@@ -16,10 +16,9 @@ function [obj_f, x_b, equ, ineq, dim] = get_input()
     
     % variables directly available from cutest
     const = -cutest_cons(zeros(n,1));
-    c_0 = cutest_obj(zeros(n,1));
-    xl = sparse(prob.bl);
-    xu = sparse(prob.bu);
-    x_b = struct('xl', xl, 'xu', xu);
+    nlp.c_0 = cutest_obj(zeros(n,1));
+    nlp.xl = sparse(prob.bl);
+    nlp.xu = sparse(prob.bu);
     H = cutest_hess(prob.x, prob.v);
     
     % compute all constraint multipliers and the linear part of obj func
@@ -27,7 +26,7 @@ function [obj_f, x_b, equ, ineq, dim] = get_input()
     c = zeros(n,1);
     for i = 1:n
         M(1:m+r,i) = cutest_cons([zeros(i-1,1); 1; zeros(n-i,1)])+const;
-        c(i) = cutest_obj([zeros(i-1,1); 1; zeros(n-i,1)])- 1/2*H(i,i)-c_0;
+        c(i) = cutest_obj([zeros(i-1,1); 1; zeros(n-i,1)])- 1/2*H(i,i)-nlp.c_0;
     end
 
     % variables for nontrivial inequalities
@@ -65,18 +64,15 @@ function [obj_f, x_b, equ, ineq, dim] = get_input()
         end
     end
     
-    H = sparse(H);
-    c = sparse(c);
-    obj_f = struct('H', H, 'c', c, 'c_0', c_0);
+    nlp.H = sparse(H);
+    nlp.c = sparse(c);
 
-    C = sparse(C);
-    cl = sparse(cl);
-    cu = sparse(cu);
-    ineq = struct('C', C, 'cl', cl, 'cu', cu);
+    nlp.C = sparse(C);
+    nlp.cl = sparse(cl);
+    nlp.cu = sparse(cu);
 
-    A = sparse(A);
-    b = sparse(b);
-    equ = struct('A', A, 'b', b);
+    nlp.A = sparse(A);
+    nlp.b = sparse(b);
 
     cutest_terminate;
 end

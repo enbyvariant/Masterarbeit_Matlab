@@ -1,72 +1,73 @@
-function [x,y,sl,su,wl,wu,tl,tu,zl,zu,bound_xl,bound_xu,bound_cl,bound_cu, equ, inequ,n, m, r, xl, xu, cl, cu] = Interior_gen_Init()
+function [it, dim, nlp] = Interior_gen_Init()
     
     p = cutest_setup;
-    n = p.n;
-    m = p.m;
-    r = 0;
+    dim.n = p.n;
+    dim.m = p.m;
+    dim.r = 0;
     
     % compute correct dimensions for m and r
-    for i = 1:m
+    for i = 1:dim.m
         if p.cl(i) || p.cu(i)
-        r = r + 1;
-        m = m - 1;
+        dim.r = dim.r + 1;
+        dim.m = dim.m - 1;
         end
     end
+    
 
     j = 0;
     k = 0;
-    equ = zeros(m,1);
-    inequ = zeros(r,1);
-    cl = zeros(r,1);
-    cu = zeros(r,1);
+    nlp.equ = zeros(dim.m,1);
+    nlp.inequ = zeros(dim.r,1);
+    nlp.cl = zeros(dim.r,1);
+    nlp.cu = zeros(dim.r,1);
     for i = 1:p.m
         if p.cl(i) == 0 && p.cu(i) == 0
             j = j+1;
-            equ(j) = i;
+            nlp.equ(j) = i;
         else
             k = k+1;
-            inequ(k) = i;
-            cl(k) = p.cl(i);
-            cu(k) = p.cu(i);
+            nlp.inequ(k) = i;
+            nlp.cl(k) = p.cl(i);
+            nlp.cu(k) = p.cu(i);
         end
     end
-    xl = p.bl;
-    xu = p.bu;
-    bound_xl = eye(n);
-    bound_xu = eye(n);
+    nlp.xl = p.bl;
+    nlp.xu = p.bu;
+    nlp.bound_xl = eye(dim.n);
+    nlp.bound_xu = eye(dim.n);
 
-    for i = 1:n
-        if xl(i) < -10^3
-            bound_xl(i,i) = 0;
-            xl(i) = 0;
+    for i = 1:dim.n
+        if nlp.xl(i) < -10^3
+            nlp.bound_xl(i,i) = 0;
+            nlp.xl(i) = 0;
         end
-        if xu(i) > 10^3
-            bound_xu(i,i) = 0;
-            xu(i) = 0;
+        if nlp.xu(i) > 10^3
+            nlp.bound_xu(i,i) = 0;
+            nlp.xu(i) = 0;
         end
     end
 
-    bound_cl = eye(r);
-    bound_cu = eye(r);
-    for i = 1:r
-        if cl(i) < -10^3
-            bound_cl(i,i) = 0;
+    nlp.bound_cl = eye(dim.r);
+    nlp.bound_cu = eye(dim.r);
+    for i = 1:dim.r
+        if nlp.cl(i) < -10^3
+            nlp.bound_cl(i,i) = 0;
         end
-        if cu(i) > 10^3
-            bound_cu = 0;
+        if nlp.cu(i) > 10^3
+            nlp.bound_cu = 0;
         end
     end
        
-    x = ones(n,1);
-    y = ones(m,1);
-    sl = bound_xl*ones(n,1);
-    su = bound_xu*ones(n,1);
-    wl = bound_xl*ones(n,1);
-    wu = bound_xu*ones(n,1);
-    tl = bound_cl*ones(r,1);
-    tu = bound_cu*ones(r,1);
-    zl = bound_cl*ones(r,1);
-    zu = bound_cu*ones(r,1);
+    it.x = ones(dim.n,1);
+    it.y = ones(dim.m,1);
+    it.sl = nlp.bound_xl*ones(dim.n,1);
+    it.su = nlp.bound_xu*ones(dim.n,1);
+    it.wl = nlp.bound_xl*ones(dim.n,1);
+    it.wu = nlp.bound_xu*ones(dim.n,1);
+    it.tl = nlp.bound_cl*ones(dim.r,1);
+    it.tu = nlp.bound_cu*ones(dim.r,1);
+    it.zl = nlp.bound_cl*ones(dim.r,1);
+    it.zu = nlp.bound_cu*ones(dim.r,1);
 
     cutest_terminate;
 end
