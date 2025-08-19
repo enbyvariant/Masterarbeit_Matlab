@@ -1,4 +1,4 @@
-function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bound_cu] = Init_LP(nlp,dim)
+function [it] = Init_LP(nlp,dim)
 %
 % 
     % Initial values
@@ -26,8 +26,8 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
     end
     index_l = find(index_l);
     index_u = find(index_u);
-    bound_xl = sparse(index_l, index_l, ones(size(index_l)), n, n);
-    bound_xu = sparse(index_u, index_u, ones(size(index_u)), n, n);
+    it.bound_xl = sparse(index_l, index_l, ones(size(index_l)), n, n);
+    it.bound_xu = sparse(index_u, index_u, ones(size(index_u)), n, n);
 
     
     index_cl = ones(1,r);
@@ -48,8 +48,8 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
     end
     index_cl = find(index_cl);
     index_cu = find(index_cu);
-    bound_cl = sparse(index_cl, index_cl, ones(size(index_cl)), r, r);
-    bound_cu = sparse(index_cu, index_cu, ones(size(index_cu)), r, r);
+    it.bound_cl = sparse(index_cl, index_cl, ones(size(index_cl)), r, r);
+    it.bound_cu = sparse(index_cu, index_cu, ones(size(index_cu)), r, r);
 
     I_n = eye(n);
     I_r = eye(r);
@@ -70,10 +70,10 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
 
     a_prim = M' * (M*M'\vector);
     x = a_prim(1:n);
-    sl = bound_xl*(x - nlp.xl);
-    su = bound_xu*(-x + nlp.xu);
-    tl = bound_cl*(nlp.C*x - nlp.cl);
-    tu = bound_cu*(-nlp.C*x + nlp.cu);
+    sl = it.bound_xl*(x - nlp.xl);
+    su = it.bound_xu*(-x + nlp.xu);
+    tl = it.bound_cl*(nlp.C*x - nlp.cl);
+    tu = it.bound_cu*(-nlp.C*x + nlp.cu);
     
     N = [nlp.A' eye(n) nlp.C'];
     a_dual = N' * (N*N'\nlp.c);
@@ -94,26 +94,26 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
     delta_pri = 3/2*max([-sl;-su;-tl;-tu;0]);
     delta_dual = 3/2*max([-wl;-wu;-zl;-zu; 0]);
     
-    sl = bound_xl*(sl + delta_pri * en);
-    su = bound_xu*(su + delta_pri * en);
-    tl = bound_cl*(tl + delta_pri * er);
-    tu = bound_cu*(tu + delta_pri * er);
-    wl = bound_xl*(wl + delta_dual * en);
-    wu = bound_xu*(wu + delta_dual * en);
-    zl = bound_cl*(zl + delta_dual * er);
-    zu = bound_cu*(zu + delta_dual * er);
+    sl = it.bound_xl*(sl + delta_pri * en);
+    su = it.bound_xu*(su + delta_pri * en);
+    tl = it.bound_cl*(tl + delta_pri * er);
+    tu = it.bound_cu*(tu + delta_pri * er);
+    wl = it.bound_xl*(wl + delta_dual * en);
+    wu = it.bound_xu*(wu + delta_dual * en);
+    zl = it.bound_cl*(zl + delta_dual * er);
+    zu = it.bound_cu*(zu + delta_dual * er);
 
     delta_pri = 1/2*(sl' * wl + su'*wu + tl'*zl + tu'*zu)/(en' * wl + en'*wu + er'*zl + er'*zu);
     delta_dual = 1/2*(sl' * wl + su'*wu + tl'*zl + tu'*zu)/(en' * sl + en'*su + er'*tl + er'*tu);
 
-    sl = bound_xl*(sl + delta_pri * en);
-    su = bound_xu*(su + delta_pri * en);
-    tl = bound_cl*(tl + delta_pri * er);
-    tu = bound_cu*(tu + delta_pri * er);
-    wl = bound_xl*(wl + delta_dual * en);
-    wu = bound_xu*(wu + delta_dual * en);
-    zl = bound_cl*(zl + delta_dual * er);
-    zu = bound_cu*(zu + delta_dual * er);
+    sl = it.bound_xl*(sl + delta_pri * en);
+    su = it.bound_xu*(su + delta_pri * en);
+    tl = it.bound_cl*(tl + delta_pri * er);
+    tu = it.bound_cu*(tu + delta_pri * er);
+    wl = it.bound_xl*(wl + delta_dual * en);
+    wu = it.bound_xu*(wu + delta_dual * en);
+    zl = it.bound_cl*(zl + delta_dual * er);
+    zu = it.bound_cu*(zu + delta_dual * er);
     
 
     % Failsave, if some linear equation system is impossible to solve
@@ -121,32 +121,43 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
         x = ones(n,1);
     end
     if any(isnan(sl))
-        sl = bound_xl*ones(n,1);
+        sl = it.bound_xl*ones(n,1);
     end
     if any(isnan(su))    
-        su = bound_xu*ones(n,1);
+        su = it.bound_xu*ones(n,1);
     end
     if any(isnan(tl))
-        tl = bound_cl*ones(r,1);
+        tl = it.bound_cl*ones(r,1);
     end
     if any(isnan(tu))
-        tu = bound_cu*ones(r,1);
+        tu = it.bound_cu*ones(r,1);
     end
     if any(isnan(wl))
-        wl = bound_xl*ones(n,1);
+        wl = it.bound_xl*ones(n,1);
     end
 
     if any(isnan(wu))
-        wu = bound_xu*ones(n,1);
+        wu = it.bound_xu*ones(n,1);
     end
     if any(isnan(zl))
-        zl = bound_cl*ones(r,1);
+        zl = it.bound_cl*ones(r,1);
     end
     if any(isnan(zu))
-        zu = bound_cu*ones(r,1);
+        zu = it.bound_cu*ones(r,1);
     end
     if any(isnan(y))
         y = ones(m,1);
     end
+
+    it.x = x;
+    it.sl = sl;
+    it.su = su;
+    it.tl = tl;
+    it.tu = tu;
+    it.y = y;
+    it.wl = wl;
+    it.wu = wu;
+    it.zl = zl;
+    it.zu = zu;
 
 end

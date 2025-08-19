@@ -4,8 +4,8 @@ function [help] = helpers(dim, nlp, it)
 
     help.beta_l = it.x - nlp.xl - it.sl;
     help.beta_u = -it.x + nlp.xu - it.su;
-    help.rho_l = nlp.C*x - nlp.cl - it.tl;
-    help.rho_u = -nlp.C*x + nlp.cu - it.tu;
+    help.rho_l = nlp.C*it.x - nlp.cl - it.tl;
+    help.rho_u = -nlp.C*it.x + nlp.cu - it.tu;
 
     help.Sl1 = zeros(dim.n);
     help.Su1 = zeros(dim.n);
