@@ -1,47 +1,47 @@
-function [A, b, H, c, c_0, xl, xu, C, cl, cu, nlp] = get_input()
+function [A, b, H, c, c_0, xl, xu, C, cl, cu, nlp, dim] = get_input()
     
     prob = cutest_setup();
-    n = prob.n;
-    m = prob.m;
-    r = 0;
+    dim.n = prob.n;
+    dim.m = prob.m;
+    dim.r = 0;
     
     % compute correct dimensions for m and r
-    for i = 1:m
+    for i = 1:prob.m
         if prob.cl(i) || prob.cu(i)
-            r = r + 1;
-            m = m - 1;
+            dim.r = dim.r + 1;
+            dim.m = dim.m - 1;
         end
     end    
 
     % variables directly available from cutest
-    const = -cutest_cons(zeros(n,1));
-    c_0 = cutest_obj(zeros(n,1));
+    const = -cutest_cons(zeros(dim.n,1));
+    c_0 = cutest_obj(zeros(dim.n,1));
     xl = sparse(prob.bl);
     xu = sparse(prob.bu);
     H = cutest_hess(prob.x, prob.v);
 
-    M = zeros(m+r,n);
-    c = zeros(n,1);
-    for i = 1:n
-        M(1:m+r,i) = cutest_cons([zeros(i-1,1); 1; zeros(n-i,1)])+const;
-        c(i) = cutest_obj([zeros(i-1,1); 1; zeros(n-i,1)])- 1/2*H(i,i)-c_0;
+    M = zeros(dim.m+dim.r,dim.n);
+    c = zeros(dim.n,1);
+    for i = 1:dim.n
+        M(1:dim.m+dim.r,i) = cutest_cons([zeros(i-1,1); 1; zeros(dim.n-i,1)])+const;
+        c(i) = cutest_obj([zeros(i-1,1); 1; zeros(dim.n-i,1)])- 1/2*H(i,i)-c_0;
     end
 
     % variables for nontrivial inequalities
     i = 0;
-    C = zeros(r,n);
-    cl = zeros(r,1);
-    cu = zeros(r,1);
+    C = zeros(dim.r,dim.n);
+    cl = zeros(dim.r,1);
+    cu = zeros(dim.r,1);
     % variables for equalities
     k = 0;
-    A = zeros(m,n);
-    b = zeros(m,1);
+    A = zeros(dim.m,dim.n);
+    b = zeros(dim.m,1);
 
-    for j = 1:m+r
+    for j = 1:dim.m+dim.r
         % constraint of the form Cx <= cu
         if prob.cl(j) < - 10^3
             i = i + 1;
-            C(i,1:n) = M(j,1:n);
+            C(i,1:dim.n) = M(j,1:dim.n);
             cu(i) = const(j);
             cl(i) = - 10^5;
         end
@@ -49,7 +49,7 @@ function [A, b, H, c, c_0, xl, xu, C, cl, cu, nlp] = get_input()
         % constraint of the form cl <= Cx
         if prob.cu(j) > 10^3
             i = i + 1;
-            C(i,1:n) = M(j,1:n);
+            C(i,1:dim.n) = M(j,1:dim.n);
             cl(i) = const(j);
             cu(i) = 10^5;
         end
@@ -57,7 +57,7 @@ function [A, b, H, c, c_0, xl, xu, C, cl, cu, nlp] = get_input()
         % constraint of the form Ax = b
         if ~prob.cl(j) && ~prob.cu(j)
             k = k + 1;
-            A(k,1:n) = M(j,1:n);
+            A(k,1:dim.n) = M(j,1:dim.n);
             b(k) = const(j);
         end
     end
