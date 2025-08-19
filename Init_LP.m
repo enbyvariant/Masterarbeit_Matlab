@@ -1,10 +1,10 @@
-function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bound_cu] = Init_LP(A, C, cl, cu, xl, xu, b, c)
+function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bound_cu] = Init_LP(nlp,dim)
 %
 % 
     % Initial values
-    n = size(A, 2);
-    m = size(A, 1);
-    r = size(C, 1);
+    n = dim.n;
+    m = dim.m;
+    r = dim.r;
     en = ones(n,1);
     er = ones(r,1);
     
@@ -13,8 +13,8 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
     wl = ones(n,1);
     wu = ones(n,1);
     for i = 1:n
-        if xl(i) < -10^3
-            xl(i) = 0;
+        if nlp.xl(i) < -10^3
+            nlp.xl(i) = 0;
             wl(i) = 0; 
             index_l(i) = 0;
         end
@@ -51,6 +51,20 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
     index_cu = find(index_cu);
     bound_cl = sparse(index_cl, index_cl, ones(size(index_cl)), r, r);
     bound_cu = sparse(index_cu, index_cu, ones(size(index_cu)), r, r);
+
+    I_n = eye(n);
+    I_r = eye(r);
+    n_l = size(nlp.index_xl);
+    n_u = size(nlp.index_xu);
+    r_l = size(nlp.index_cl);
+    r_u = size(nlp.index_cu);
+
+    M = [A zeros(n, n_l + n_u + r_l + r_u);
+        I_n(nlp.index_xl,:)  -I_n(nlp.index_xl,nlp.index_xl)       zeros(n_l,n_u)                zeros(n_l,r_l) zeros(n_l,r_u);
+        -I_n(nlp.index_xu,:)     zeros(n_u,n_l)                -I_n(nlp.index_xu,nlp.index_xu)   zeros(n_u,r_l) zeros(n_u,r_u);
+        nlp.C(nlp.index_cl,:)    zeros(r_l,n_l)                       zeros(r_l,n_u)             -I_r(nlp.index_cl,nlp.index_cl) zeros(r_l,r_u);
+        -nlp.C(nlp.index_cu,:)   zeros(r_u,n_l)                       zeros(r_u,n_u)            zeros(r_u,r_l) -I_r(nlp.index_cu,nlp.index_cu)
+        ]
 
     % Compute starting point
     M = [A zeros(m,n+r);2*bound_xl*eye(n) -eye(n) zeros(n,r);2*bound_cl*C zeros(r,n) -eye(r)];
