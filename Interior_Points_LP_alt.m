@@ -6,7 +6,7 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
     r = size(C,1);
     en = ones(n,1);
     er = ones(r,1);
-    tao = 0.995;
+    eta = 0.995;
 
     % Compute starting point
     [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bound_cu] = Init_LP(A, C, cl, cu, xl, xu, b, c);
@@ -166,7 +166,7 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             if isempty(index)
                alpha_pri = 1;
             else
-                alpha_pri = tao*min(curr(index)./(-step(index)));
+                alpha_pri = eta*min(curr(index)./(-step(index)));
                 if alpha_pri > 1
                     alpha_pri = 1;
                 end
@@ -179,7 +179,7 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             if isempty(index)
                alpha_dual = 1;
             else
-                alpha_dual = tao*min(curr(index)./(-step(index)));
+                alpha_dual = eta*min(curr(index)./(-step(index)));
                 if alpha_dual > 1
                     alpha_dual = 1;
                 end
