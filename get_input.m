@@ -66,7 +66,6 @@ function [nlp, dim] = get_input()
     nlp.index_xu = find(xu < 10^3);
     nlp.index_cl = find(cl > -10^3);
     nlp.index_cu = find(cu < 10^3);
-
     
     nlp.H = sparse(H);
     nlp.c = sparse(c);

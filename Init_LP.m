@@ -18,8 +18,8 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
             wl(i) = 0; 
             index_l(i) = 0;
         end
-        if xu(i) > 10^3
-            xu(i) = 0;
+        if nlp.xu(i) > 10^3
+            nlp.xu(i) = 0;
             wu(i) = 0;
             index_u(i) = 0;
         end
@@ -29,20 +29,19 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
     bound_xl = sparse(index_l, index_l, ones(size(index_l)), n, n);
     bound_xu = sparse(index_u, index_u, ones(size(index_u)), n, n);
 
-    %bound_xu = zeros(n);
     
     index_cl = ones(1,r);
     index_cu = ones(1,r);
     zl = ones(r,1);
     zu = ones(r,1);
     for i = 1:r
-        if cl(i) < -10^3
-            cl(i) = 0;
+        if nlp.cl(i) < -10^3
+            nlp.cl(i) = 0;
             zl(i) = 0;
             index_cl(i) = 0;
         end
-        if cu(i) > 10^3
-            cu(i) = 0;
+        if nlp.cu(i) > 10^3
+            nlp.cu(i) = 0;
             zu(i) = 0;
             index_cu(i) = 0;
         end
@@ -54,31 +53,30 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
 
     I_n = eye(n);
     I_r = eye(r);
-    n_l = size(nlp.index_xl);
-    n_u = size(nlp.index_xu);
-    r_l = size(nlp.index_cl);
-    r_u = size(nlp.index_cu);
+    n_l = size(nlp.index_xl,1);
+    n_u = size(nlp.index_xu,1);
+    r_l = size(nlp.index_cl,1);
+    r_u = size(nlp.index_cu,1);
 
-    M = [A zeros(n, n_l + n_u + r_l + r_u);
+    M = [nlp.A zeros(m, n_l + n_u + r_l + r_u);
         I_n(nlp.index_xl,:)  -I_n(nlp.index_xl,nlp.index_xl)       zeros(n_l,n_u)                zeros(n_l,r_l) zeros(n_l,r_u);
         -I_n(nlp.index_xu,:)     zeros(n_u,n_l)                -I_n(nlp.index_xu,nlp.index_xu)   zeros(n_u,r_l) zeros(n_u,r_u);
         nlp.C(nlp.index_cl,:)    zeros(r_l,n_l)                       zeros(r_l,n_u)             -I_r(nlp.index_cl,nlp.index_cl) zeros(r_l,r_u);
         -nlp.C(nlp.index_cu,:)   zeros(r_u,n_l)                       zeros(r_u,n_u)            zeros(r_u,r_l) -I_r(nlp.index_cu,nlp.index_cu)
-        ]
+        ];
 
     % Compute starting point
-    M = [A zeros(m,n+r);2*bound_xl*eye(n) -eye(n) zeros(n,r);2*bound_cl*C zeros(r,n) -eye(r)];
-    vector = [b; bound_xl*xl + bound_xu*xu; bound_cl*cl + bound_cu*cu];
+    vector = [nlp.b; nlp.xl(nlp.index_xl); nlp.xu(nlp.index_xu); nlp.cl(nlp.index_cl); nlp.cu(nlp.index_cu)];
 
     a_prim = M' * (M*M'\vector);
     x = a_prim(1:n);
-    sl = bound_xl*(x - xl);
-    su = bound_xu*(-x + xu);
-    tl = bound_cl*(C*x - cl);
-    tu = bound_cu*(-C*x + cu);
+    sl = bound_xl*(x - nlp.xl);
+    su = bound_xu*(-x + nlp.xu);
+    tl = bound_cl*(nlp.C*x - nlp.cl);
+    tu = bound_cu*(-nlp.C*x + nlp.cu);
     
-    N = [A' eye(n) C'];
-    a_dual = N' * (N*N'\c);
+    N = [nlp.A' eye(n) nlp.C'];
+    a_dual = N' * (N*N'\nlp.c);
     y = a_dual(1:m);
     zl = a_dual(m+n+1:m+n+r);
     zu = zeros(r,1);
