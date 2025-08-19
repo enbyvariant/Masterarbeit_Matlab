@@ -1,4 +1,4 @@
-function [A, b, H, c, c_0, xl, xu, C, cl, cu] = get_input()
+function [A, b, H, c, c_0, xl, xu, C, cl, cu, nlp] = get_input()
     
     prob = cutest_setup();
     n = prob.n;
@@ -11,8 +11,8 @@ function [A, b, H, c, c_0, xl, xu, C, cl, cu] = get_input()
             r = r + 1;
             m = m - 1;
         end
-    end
-    
+    end    
+
     % variables directly available from cutest
     const = -cutest_cons(zeros(n,1));
     c_0 = cutest_obj(zeros(n,1));
@@ -61,6 +61,12 @@ function [A, b, H, c, c_0, xl, xu, C, cl, cu] = get_input()
             b(k) = const(j);
         end
     end
+
+    nlp.index_xl = find(xl > -10^3);
+    nlp.index_xu = find(xu < 10^3);
+    nlp.index_cl = find(cl > -10^3);
+    nlp.index_cu = find(cu < 10^3);
+
     
     H = sparse(H);
     c = sparse(c);
