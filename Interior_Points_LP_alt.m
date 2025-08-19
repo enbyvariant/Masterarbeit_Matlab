@@ -90,14 +90,12 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             
             % calculate primal affine step length
 
-            step = [del_sl_a; del_su_a; del_wl_a; del_wu_a];
-
-            curr = [sl; su; wl; wu];
+            step = [del_sl_a; del_su_a; del_tl_a; del_tu_a];
+            curr = [sl; su; tl; tu];
 
             index = find(step < 0);
             if isempty(index)
                alpha_pri = 1;
-
             else
                 alpha_pri = min(curr(index)./(-step(index)));
                 if alpha_pri > 1
@@ -106,12 +104,11 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             end
 
             % calculate dual affine step length
-            step = [del_tl_a; del_tu_a; del_zl_a; del_zu_a];
-            curr = [tl; tu; zl; zu];
+            step = [del_wl_a; del_wu_a; del_zl_a; del_zu_a];
+            curr = [wl; wu; zl; zu];
             index = find(step < 0);
             if isempty(index)
                alpha_dual = 1;
-
             else
                 alpha_dual = min(curr(index)./(-step(index)));
                 if alpha_dual > 1
@@ -123,10 +120,10 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             % calculate affine duality measure
             sl_a = sl + alpha_pri*del_sl_a;
             su_a = su + alpha_pri*del_su_a;
-            wl_a = wl + alpha_pri*del_wl_a;
-            wu_a = wu + alpha_pri*del_wu_a;
-            tl_a = tl + alpha_dual*del_tl_a;
-            tu_a = tu + alpha_dual*del_tu_a;
+            tl_a = tl + alpha_pri*del_tl_a;
+            tu_a = tu + alpha_pri*del_tu_a;
+            wl_a = wl + alpha_dual*del_wl_a;
+            wu_a = wu + alpha_dual*del_wu_a;
             zl_a = zl + alpha_dual*del_zl_a;
             zu_a = zu + alpha_dual*del_zu_a;
             mu_aff = (sl_a'*wl_a + su_a'*wu_a + tl_a'*zl_a + tu_a'*zu_a)/(2*(n+r));
@@ -145,7 +142,7 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             omega_3 = psi1*xi;
             omega = [omega_1;omega_2;omega_3];
 
-            % caöculate new step
+            % calculate new step
             sol = mat\omega;
             del_x = sol(1:n);
             del_y = -sol(n+1:n+m);
