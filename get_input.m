@@ -1,4 +1,4 @@
-function [A, b, H, c, c_0, xl, xu, C, cl, cu, nlp, dim] = get_input()
+function [nlp, dim] = get_input()
     
     prob = cutest_setup();
     dim.n = prob.n;
@@ -68,15 +68,19 @@ function [A, b, H, c, c_0, xl, xu, C, cl, cu, nlp, dim] = get_input()
     nlp.index_cu = find(cu < 10^3);
 
     
-    H = sparse(H);
-    c = sparse(c);
+    nlp.H = sparse(H);
+    nlp.c = sparse(c);
+    nlp.c_0 = c_0;
 
-    C = sparse(C);
-    cl = sparse(cl);
-    cu = sparse(cu);
+    nlp.C = sparse(C);
+    nlp.cl = sparse(cl);
+    nlp.cu = sparse(cu);
 
-    A = sparse(A);
-    b = sparse(b);
+    nlp.xl = xl;
+    nlp.xu = xu;
+
+    nlp.A = sparse(A);
+    nlp.b = sparse(b);
 
     cutest_terminate;
 end
