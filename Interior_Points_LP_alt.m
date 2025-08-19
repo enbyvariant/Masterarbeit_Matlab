@@ -1,4 +1,4 @@
-function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, A, b, xl, xu, c, cl, cu, C)
+function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, A, b, xl, xu, c, cl, cu, C, nlp,dim)
     
     % Initial values
     n = size(A, 2);
@@ -9,7 +9,7 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
     eta = 0.995;
 
     % Compute starting point
-    [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bound_cu] = Init_LP(A, C, cl, cu, xl, xu, b, c);
+    [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bound_cu] = Init_LP(nlp,dim);
     iterations = 0;
     data = [];
     p = cutest_setup;
@@ -186,7 +186,7 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             end
             
             % update iterate
-            x = x + alpha_pri*del_x;
+            x = x + alpha_pri*del_x
             sl = sl + alpha_pri*del_sl;
             su = su + alpha_pri*del_su;
             tl = tl + alpha_pri*del_tl;

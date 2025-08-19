@@ -78,10 +78,18 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
     N = [nlp.A' eye(n) nlp.C'];
     a_dual = N' * (N*N'\nlp.c);
     y = a_dual(1:m);
-    zl = a_dual(m+n+1:m+n+r);
-    zu = zeros(r,1);
     wl = a_dual(m+1:m+n);
     wu = zeros(n,1);
+
+    for i =1:r
+        if ismember(i,nlp.index_cl)
+            zl(i) = a_dual(m+n+i);
+            zu(i) = 0;
+        else
+            zu(i) = a_dual(m+n+i);
+            zl(i) = 0;
+        end
+    end
     
     delta_pri = 3/2*max([-sl;-su;-tl;-tu;0]);
     delta_dual = 3/2*max([-wl;-wu;-zl;-zu; 0]);
@@ -119,7 +127,6 @@ function [x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl, bound_xu, bound_cl, bo
         su = bound_xu*ones(n,1);
     end
     if any(isnan(tl))
-
         tl = bound_cl*ones(r,1);
     end
     if any(isnan(tu))
