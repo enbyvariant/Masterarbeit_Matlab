@@ -159,14 +159,12 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             %----------------------------
             % calculate primal affine step length
 
-            step = [del_sl; del_su; del_wl; del_wu];
-
-            curr = [sl; su; wl; wu];
+            step = [del_sl; del_su; del_tl; del_tu];
+            curr = [sl; su; tl; tu];
 
             index = find(step < 0);
             if isempty(index)
                alpha_pri = 1;
-
             else
                 alpha_pri = tao*min(curr(index)./(-step(index)));
                 if alpha_pri > 1
@@ -175,12 +173,11 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             end
 
             % calculate dual affine step length
-            step = [del_tl; del_tu; del_zl; del_zu];
-            curr = [tl; tu; zl; zu];
+            step = [del_wl; del_wu; del_zl; del_zu];
+            curr = [wl; wu; zl; zu];
             index = find(step < 0);
             if isempty(index)
                alpha_dual = 1;
-
             else
                 alpha_dual = tao*min(curr(index)./(-step(index)));
                 if alpha_dual > 1
@@ -190,15 +187,15 @@ function [x,y,wl, wu, sl,su,tl,tu,zl,zu, mu_n, obj, iterations, data] = Interior
             
             % update iterate
             x = x + alpha_pri*del_x;
+            sl = sl + alpha_pri*del_sl;
+            su = su + alpha_pri*del_su;
+            tl = tl + alpha_pri*del_tl;
+            tu = tu + alpha_pri*del_tu;
             y = y + alpha_dual*del_y;
             zl = zl + alpha_dual*del_zl;
             zu = zu + alpha_dual*del_zu;
-            wl = wl + alpha_pri*del_wl;
-            wu = wu + alpha_pri*del_wu;
-            sl = sl + alpha_pri*del_sl;
-            su = su + alpha_pri*del_su;
-            tl = tl + alpha_dual*del_tl;
-            tu = tu + alpha_dual*del_tu;
+            wl = wl + alpha_dual*del_wl;
+            wu = wu + alpha_dual*del_wu;
 
             mu_n = (sl'*wl + su'*wu + tl'*zl + tu'*zu)/(2*(n+r));
             obj = cutest_obj(x);
