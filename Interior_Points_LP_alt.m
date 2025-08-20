@@ -1,9 +1,9 @@
-function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, A, b, xl, xu, c, cl, cu, C, nlp,dim)
+function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, nlp,dim)
     
     % Initial values
-    n = size(A, 2);
-    m = size(A, 1);
-    r = size(C,1);
+    n = dim.n;
+    m = dim.m;
+    r = dim.r;
     en = ones(n,1);
     er = ones(r,1);
     eta = 0.995;
@@ -25,11 +25,13 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, A, b, 
             help = helpers(dim,nlp,it);
             
             %set up the affine equation system
-            mat = [help.PHI     A'         C';
-                    A    zeros(m)   zeros(m,r);
-                    C    zeros(r,m)   -help.PSI1   ];
-            omega_1 = - c + A'*it.y + C'*(it.zl - it.zu) - it.bound_xl*help.Sl1*help.Wl*help.beta_l + it.bound_xu*help.Su1*help.Wu*help.beta_u;
-            omega_2 = -(A*it.x -b);
+            mat = [help.PHI     nlp.A'         nlp.C';
+                    nlp.A    zeros(m)   zeros(m,r);
+                    nlp.C    zeros(r,m)   -help.PSI1   ];
+            % disp(rank(full(mat)));
+            % disp(size(mat));
+            omega_1 = - nlp.c + nlp.A'*it.y + nlp.C'*(it.zl - it.zu) - it.bound_xl*help.Sl1*help.Wl*help.beta_l + it.bound_xu*help.Su1*help.Wu*help.beta_u;
+            omega_2 = -(nlp.A*it.x -nlp.b);
             xi = -it.zl - it.bound_cl*help.Tl1*help.Zl*help.rho_l + it.zu + it.bound_cu*help.Tu1*help.Zu*help.rho_u;
             omega_3 = help.PSI1*xi;
             omega = [omega_1; omega_2; omega_3];
@@ -43,8 +45,8 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, A, b, 
             del_wl_a = it.bound_xl*(-it.wl -help.Sl1*help.Wl*del_sl_a);
             del_wu_a = it.bound_xu*(-it.wu - help.Su1*help.Wu*del_su_a);
         
-            del_tl_a = it.bound_cl*(C*del_x_a + help.rho_l);
-            del_tu_a = it.bound_cu*(-C*del_x_a + help.rho_u);
+            del_tl_a = it.bound_cl*(nlp.C*del_x_a + help.rho_l);
+            del_tu_a = it.bound_cu*(-nlp.C*del_x_a + help.rho_u);
             del_zu_a = it.bound_cu*(-it.zu -help.Tu1*help.Zu*del_tu_a);
             del_zl_a = it.bound_cl*(-it.zl - help.Tl1*help.Zl*del_tl_a);
             
@@ -100,7 +102,7 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, A, b, 
             phil = it.bound_xl*(it.wl - help.Sl1*sigma*mu*en + help.Sl1*diag(del_sl_a)*diag(del_wl_a)*en);
             phiu = it.bound_xu*(it.wu - help.Su1*sigma*mu*en + help.Su1*diag(del_su_a)*diag(del_wu_a)*en);
             
-            omega_1 = -c + A'*it.y + C'*(it.zl-it.zu) + it.bound_xl*it.wl - it.bound_xu*it.wu - it.bound_xl*(phil + help.Sl1*help.Wl*help.beta_l) + it.bound_xu*(phiu + help.Su1*help.Wu*help.beta_u);
+            omega_1 = -nlp.c + nlp.A'*it.y + nlp.C'*(it.zl-it.zu) + it.bound_xl*it.wl - it.bound_xu*it.wu - it.bound_xl*(phil + help.Sl1*help.Wl*help.beta_l) + it.bound_xu*(phiu + help.Su1*help.Wu*help.beta_u);
             xi = -psil + psiu - it.bound_cl*help.Tl1*help.Zl*help.rho_l + it.bound_cu*help.Tu1*help.Zu*help.rho_u;
             omega_3 = help.PSI1*xi;
             omega = [omega_1;omega_2;omega_3];
@@ -114,8 +116,8 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, A, b, 
             del_wl = it.bound_xl*(-phil -help.Sl1*help.Wl*del_sl);
             del_wu = it.bound_xu*(-phiu - help.Su1*help.Wu*del_su);
         
-            del_tl = it.bound_cl*(C*del_x + help.rho_l);
-            del_tu = it.bound_cu*(-C*del_x + help.rho_u);
+            del_tl = it.bound_cl*(nlp.C*del_x + help.rho_l);
+            del_tu = it.bound_cu*(-nlp.C*del_x + help.rho_u);
             del_zu = it.bound_cu*(-psiu -help.Tu1*help.Zu*del_tu);
             del_zl = it.bound_cl*(-psil - help.Tl1*help.Zl*del_tl);
             

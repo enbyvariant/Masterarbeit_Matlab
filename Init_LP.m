@@ -91,8 +91,8 @@ function [it] = Init_LP(nlp,dim)
         end
     end
     
-    delta_pri = 3/2*max([-sl;-su;-tl;-tu;0]);
-    delta_dual = 3/2*max([-wl;-wu;-zl;-zu; 0]);
+    delta_pri = 3/2*max([-sl;-su;-tl;-tu;0.01]);
+    delta_dual = 3/2*max([-wl;-wu;-zl;-zu; 0.01]);
     
     sl = it.bound_xl*(sl + delta_pri * en);
     su = it.bound_xu*(su + delta_pri * en);
