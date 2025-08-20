@@ -31,5 +31,14 @@ function [help] = helpers(dim, nlp, it)
         end
     end
     help.Zl = diag(it.zl);
-    help.Zu = diag(it.zu);   
+    help.Zu = diag(it.zu);               
+    help.PHI = it.bound_xl*help.Sl1*help.Wl + it.bound_xu*help.Su1*help.Wu;
+    PSI = it.bound_cl*help.Tl1*help.Zl + it.bound_cu*help.Tu1*help.Zu;
+    help.PSI1 = zeros(dim.r);
+        for i = 1:dim.r
+            if PSI(i,i) ~= 0
+            help.PSI1(i,i) = 1/PSI(i,i);
+            end
+        end
+
 end

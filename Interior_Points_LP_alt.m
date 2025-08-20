@@ -25,21 +25,13 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, A, b, 
             help = helpers(dim,nlp,it);
             
             %set up the affine equation system
-            phi = it.bound_xl*help.Sl1*help.Wl + it.bound_xu*help.Su1*help.Wu;
-            psi = it.bound_cl*help.Tl1*help.Zl + it.bound_cu*help.Tu1*help.Zu;
-            psi1 = zeros(r);
-            for i = 1:r
-                if psi(i,i) ~= 0
-                psi1(i,i) = 1/psi(i,i);
-                end
-            end
-            mat = [phi     A'         C';
+            mat = [help.PHI     A'         C';
                     A    zeros(m)   zeros(m,r);
-                    C    zeros(r,m)   -psi1   ];
+                    C    zeros(r,m)   -help.PSI1   ];
             omega_1 = - c + A'*it.y + C'*(it.zl - it.zu) - it.bound_xl*help.Sl1*help.Wl*help.beta_l + it.bound_xu*help.Su1*help.Wu*help.beta_u;
             omega_2 = -(A*it.x -b);
             xi = -it.zl - it.bound_cl*help.Tl1*help.Zl*help.rho_l + it.zu + it.bound_cu*help.Tu1*help.Zu*help.rho_u;
-            omega_3 = psi1*xi;
+            omega_3 = help.PSI1*xi;
             omega = [omega_1; omega_2; omega_3];
 
             % calculate affine step
@@ -110,7 +102,7 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, A, b, 
             
             omega_1 = -c + A'*it.y + C'*(it.zl-it.zu) + it.bound_xl*it.wl - it.bound_xu*it.wu - it.bound_xl*(phil + help.Sl1*help.Wl*help.beta_l) + it.bound_xu*(phiu + help.Su1*help.Wu*help.beta_u);
             xi = -psil + psiu - it.bound_cl*help.Tl1*help.Zl*help.rho_l + it.bound_cu*help.Tu1*help.Zu*help.rho_u;
-            omega_3 = psi1*xi;
+            omega_3 = help.PSI1*xi;
             omega = [omega_1;omega_2;omega_3];
 
             % calculate new step
