@@ -23,35 +23,6 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, A, b, 
 
             % update helping variables
             help = helpers(dim,nlp,it);
-            % Sl1 = zeros(n);
-            % Su1 = zeros(n);
-            % for i = 1:n
-            %     if sl(i) ~= 0
-            %         Sl1(i,i) = 1/sl(i);
-            %     end
-            %     if su(i) ~= 0
-            %         Su1(i,i) = 1/su(i);
-            %     end
-            % end
-            % Wl = diag(wl);
-            % Wu = diag(wu);
-            % 
-            % Tl1 = zeros(r);
-            % Tu1 = zeros(r);
-            % for i = 1:r
-            %     if tl(i) ~= 0
-            %         Tl1(i,i) = 1/tl(i);
-            %     end
-            %     if tu(i) ~= 0
-            %         Tu1(i,i) = 1/tu(i);
-            %     end
-            % end
-            % Zl = diag(zl);
-            % Zu = diag(zu);
-            % rhol = bound_cl*(C*x - cl -tl);
-            % rhou = bound_cu*(-C*x + cu -tu);
-            % betal = bound_xl*(x -xl -sl);
-            % betau = bound_xu*(-x + xu -su);
             
             %set up the affine equation system
             phi = it.bound_xl*help.Sl1*help.Wl + it.bound_xu*help.Su1*help.Wu;
