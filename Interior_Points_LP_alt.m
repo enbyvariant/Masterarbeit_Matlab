@@ -57,29 +57,12 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, nlp,di
 
             step = [del_sl_a; del_su_a; del_tl_a; del_tu_a];
             curr = [it.sl; it.su; it.tl; it.tu];
-
-            index = find(step < 0);
-            if isempty(index)
-               alpha_pri = 1;
-            else
-                alpha_pri = min(curr(index)./(-step(index)));
-                if alpha_pri > 1
-                    alpha_pri = 1;
-                end
-            end
+            [alpha_pri] = step_length(step, curr, 1);
 
             % calculate dual affine step length
             step = [del_wl_a; del_wu_a; del_zl_a; del_zu_a];
             curr = [it.wl; it.wu; it.zl; it.zu];
-            index = find(step < 0);
-            if isempty(index)
-               alpha_dual = 1;
-            else
-                alpha_dual = min(curr(index)./(-step(index)));
-                if alpha_dual > 1
-                    alpha_dual = 1;
-                end
-            end
+            [alpha_dual] = step_length(step, curr, 1);
             
             %------------------------
             % calculate affine duality measure
@@ -126,29 +109,12 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, nlp,di
 
             step = [del_sl; del_su; del_tl; del_tu];
             curr = [it.sl; it.su; it.tl; it.tu];
-
-            index = find(step < 0);
-            if isempty(index)
-               alpha_pri = 1;
-            else
-                alpha_pri = eta*min(curr(index)./(-step(index)));
-                if alpha_pri > 1
-                    alpha_pri = 1;
-                end
-            end
+            [alpha_pri] = step_length(step, curr, eta);
 
             % calculate dual affine step length
             step = [del_wl; del_wu; del_zl; del_zu];
             curr = [it.wl; it.wu; it.zl; it.zu];
-            index = find(step < 0);
-            if isempty(index)
-               alpha_dual = 1;
-            else
-                alpha_dual = eta*min(curr(index)./(-step(index)));
-                if alpha_dual > 1
-                    alpha_dual = 1;
-                end
-            end
+            [alpha_dual] = step_length(step, curr, eta);
             
             % update iterate
             it.x = it.x + alpha_pri*del_x;
