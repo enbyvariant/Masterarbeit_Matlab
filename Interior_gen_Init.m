@@ -1,72 +1,77 @@
-function [x,y,sl,su,wl,wu,tl,tu,zl,zu,bound_xl,bound_xu,bound_cl,bound_cu, equ, inequ,n, m, r, xl, xu, cl, cu] = Interior_gen_Init()
+function [it,nlp,dim] = Interior_gen_Init()
     
     p = cutest_setup;
-    n = p.n;
-    m = p.m;
-    r = 0;
+    dim.n = p.n;
+    dim.m = p.m;
+    dim.r = 0;
     
     % compute correct dimensions for m and r
-    for i = 1:m
+    for i = 1:p.m
         if p.cl(i) || p.cu(i)
-        r = r + 1;
-        m = m - 1;
+        dim.r = dim.r + 1;
+        dim.m = dim.m - 1;
         end
     end
-
+    
+    %Determine which lines of the constraints are inequalities, which
+    %equalities
     j = 0;
     k = 0;
-    equ = zeros(m,1);
-    inequ = zeros(r,1);
-    cl = zeros(r,1);
-    cu = zeros(r,1);
+    nlp.equ = zeros(dim.m,1);
+    nlp.inequ = zeros(dim.r,1);
+    nlp.cl = zeros(dim.r,1);
+    nlp.cu = zeros(dim.r,1);
     for i = 1:p.m
-        if p.cl(i) == 0 && p.cu(i) == 0
-            j = j+1;
-            equ(j) = i;
-        else
+        if any([p.cl(i) p.cu(i)])
             k = k+1;
-            inequ(k) = i;
-            cl(k) = p.cl(i);
-            cu(k) = p.cu(i);
-        end
-    end
-    xl = p.bl;
-    xu = p.bu;
-    bound_xl = eye(n);
-    bound_xu = eye(n);
-
-    for i = 1:n
-        if xl(i) < -10^3
-            bound_xl(i,i) = 0;
-            xl(i) = 0;
-        end
-        if xu(i) > 10^3
-            bound_xu(i,i) = 0;
-            xu(i) = 0;
+            nlp.inequ(k) = i;
+            nlp.cl(k) = p.cl(i);
+            nlp.cu(k) = p.cu(i);
+        else
+            j = j+1;
+            nlp.equ(j) = i;
         end
     end
 
-    bound_cl = eye(r);
-    bound_cu = eye(r);
+    % determine all general boundaries for x
+    nlp.xl = p.bl;
+    nlp.xu = p.bu;
+    it.bound_xl = eye(n);
+    it.bound_xu = eye(n);
+
+    for i = 1:dim.n
+        if nlp.xl(i) < -10^3
+            it.bound_xl(i,i) = 0;
+            nlp.xl(i) = 0;
+        end
+        if nlp.xu(i) > 10^3
+            it.bound_xu(i,i) = 0;
+            nlp.xu(i) = 0;
+        end
+    end
+
+    %determine the boundaries for Cx
+    it.bound_cl = eye(dim.r);
+    it.bound_cu = eye(dim.r);
     for i = 1:r
-        if cl(i) < -10^3
-            bound_cl(i,i) = 0;
+        if nlp.cl(i) < -10^3
+            it.bound_cl(i,i) = 0;
         end
-        if cu(i) > 10^3
-            bound_cu = 0;
+        if nlp.cu(i) > 10^3
+            it.bound_cu = 0;
         end
     end
        
-    x = ones(n,1);
-    y = ones(m,1);
-    sl = bound_xl*ones(n,1);
-    su = bound_xu*ones(n,1);
-    wl = bound_xl*ones(n,1);
-    wu = bound_xu*ones(n,1);
-    tl = bound_cl*ones(r,1);
-    tu = bound_cu*ones(r,1);
-    zl = bound_cl*ones(r,1);
-    zu = bound_cu*ones(r,1);
+    it.x = ones(n,1);
+    it.y = ones(m,1);
+    it.sl = it.bound_xl*ones(n,1);
+    it.su = it.bound_xu*ones(n,1);
+    it.wl = it.bound_xl*ones(n,1);
+    it.wu = it.bound_xu*ones(n,1);
+    it.tl = it.bound_cl*ones(r,1);
+    it.tu = it.bound_cu*ones(r,1);
+    it.zl = it.bound_cl*ones(r,1);
+    it.zu = it.bound_cu*ones(r,1);
 
     cutest_terminate;
 end
