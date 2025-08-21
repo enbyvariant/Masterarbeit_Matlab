@@ -1,10 +1,9 @@
-function [nlp] = cutest_iterate(it, nlp, dim)
+function [nlp] = cutest_iterate(it, nlp, dim,p)
 % Gives out the values for the current iterate
 %  Using the cutest environment
     m = dim.m;
     r = dim.r;
 
-    p = cutest_setup;
     
     [cons, J] = cutest_cons(it.x);
     nlp.c_e = cons(nlp.equ);
@@ -14,12 +13,11 @@ function [nlp] = cutest_iterate(it, nlp, dim)
 
     lambda = zeros(m+r,1);
     lambda(nlp.equ) = it.y;
-    lambda(nlp.inequ) = it.zl - it.zu;
+    lambda(nlp.inequ) = it.zl - it.zu
 
     [nlp.L, nlp.grad] = cutest_lag(it.x,lambda);
     nlp.H = cutest_hess(it.x,lambda);
     
     nlp.obj = cutest_obj(it.x);
 
-    cutest_terminate;
 end

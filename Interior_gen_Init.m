@@ -36,8 +36,8 @@ function [it,nlp,dim] = Interior_gen_Init()
     % determine all general boundaries for x
     nlp.xl = p.bl;
     nlp.xu = p.bu;
-    it.bound_xl = eye(n);
-    it.bound_xu = eye(n);
+    it.bound_xl = eye(dim.n);
+    it.bound_xu = eye(dim.n);
 
     for i = 1:dim.n
         if nlp.xl(i) < -10^3
@@ -53,7 +53,7 @@ function [it,nlp,dim] = Interior_gen_Init()
     %determine the boundaries for Cx
     it.bound_cl = eye(dim.r);
     it.bound_cu = eye(dim.r);
-    for i = 1:r
+    for i = 1:dim.r
         if nlp.cl(i) < -10^3
             it.bound_cl(i,i) = 0;
         end
@@ -62,16 +62,16 @@ function [it,nlp,dim] = Interior_gen_Init()
         end
     end
        
-    it.x = ones(n,1);
-    it.y = ones(m,1);
-    it.sl = it.bound_xl*ones(n,1);
-    it.su = it.bound_xu*ones(n,1);
-    it.wl = it.bound_xl*ones(n,1);
-    it.wu = it.bound_xu*ones(n,1);
-    it.tl = it.bound_cl*ones(r,1);
-    it.tu = it.bound_cu*ones(r,1);
-    it.zl = it.bound_cl*ones(r,1);
-    it.zu = it.bound_cu*ones(r,1);
+    it.x = ones(dim.n,1);
+    it.y = ones(dim.m,1);
+    it.sl = it.bound_xl*ones(dim.n,1);
+    it.su = it.bound_xu*ones(dim.n,1);
+    it.wl = it.bound_xl*ones(dim.n,1);
+    it.wu = it.bound_xu*ones(dim.n,1);
+    it.tl = it.bound_cl*ones(dim.r,1);
+    it.tu = it.bound_cu*ones(dim.r,1);
+    it.zl = it.bound_cl*ones(dim.r,1);
+    it.zu = it.bound_cu*ones(dim.r,1);
 
     cutest_terminate;
 end
