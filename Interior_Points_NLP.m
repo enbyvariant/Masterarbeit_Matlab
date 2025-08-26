@@ -45,6 +45,7 @@ function [nlp,it, iter] = Interior_Points_NLP(max_iter)
         xi = -it.zl - it.bound_cl*help.Tl1*help.Zl*help.rho_l ...
         + it.zu + it.bound_cu*help.Tu1*help.Zu*help.rho_u;
         omega = [nu; -nlp.c_e; help.PSI1*xi];
+    
 
         sol = mat\omega;
         del_x = sol(1:n);
@@ -91,8 +92,6 @@ function [nlp,it, iter] = Interior_Points_NLP(max_iter)
         + psi_u + it.bound_cu*help.Tu1*help.Zu*help.rho_u;
         omega = [nu; -nlp.c_e ; help.PSI1*xi];
 
-        disp(it.mu);
-    
         sol = mat\omega;
         del_x = sol(1:n);
         del_y = - sol(n+1:n+m);

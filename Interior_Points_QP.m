@@ -13,10 +13,20 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_QP(iter, nlp, dim)
 
     % Compute starting point
     [it] = Interior_Points_Init(nlp,dim);
-    %[x, sl, su, tl, tu, y, wl, wu, zl, zu, bound_xl,bound_xu, bound_cl, bound_cu] = Interior_Points_Init(H, A, b, c, xl, xu, cl, cu, C,nlp,dim);
+    it.x = ones(dim.n,1);
+    it.y = ones(dim.m,1);
+    it.sl = it.bound_xl*ones(dim.n,1);
+    it.su = it.bound_xu*ones(dim.n,1);
+    it.wl = it.bound_xl*ones(dim.n,1);
+    it.wu = it.bound_xu*ones(dim.n,1);
+    it.tl = it.bound_cl*ones(dim.r,1);
+    it.tu = it.bound_cu*ones(dim.r,1);
+    it.zl = it.bound_cl*ones(dim.r,1);
+    it.zu = it.bound_cu*ones(dim.r,1);
+
     iterations = 0;
 
-    data = [];
+    data = zeros(iter,4);
     p = cutest_setup;
 
 
@@ -25,8 +35,7 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_QP(iter, nlp, dim)
             break;
         end
         iterations = iterations + 1;
-
-
+            
             % update helping variables
             [help] = helpers(dim, nlp, it);
             
@@ -77,18 +86,21 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_QP(iter, nlp, dim)
     
             % set the centering parameter sigma
             sigma = (mu_aff/mu)^3;
-    
+ 
+
             % calculate new step
             psil = it.bound_cl*(it.zl - sigma*mu*help.Tl1*er + help.Tl1*diag(del_tl_a)*diag(del_zl_a)*er);
             psiu = it.bound_cu*(it.zu - sigma*mu*help.Tu1*er + help.Tu1*diag(del_tu_a)*diag(del_zu_a)*er);
             phil = it.bound_xl*(it.wl - help.Sl1*sigma*mu*en + help.Sl1*diag(del_sl_a)*diag(del_wl_a)*en);
             phiu = it.bound_xu*(it.wu - help.Su1*sigma*mu*en + help.Su1*diag(del_su_a)*diag(del_wu_a)*en);
-            
+           
             omega_1 = -nlp.H*it.x -nlp.c + nlp.A'*it.y + nlp.C'*(it.zl-it.zu) + it.bound_xl*it.wl - it.bound_xu*it.wu ...
                 - it.bound_xl*(phil + help.Sl1*help.Wl*help.beta_l) + it.bound_xu*(phiu + help.Su1*help.Wu*help.beta_u);
             xi = -psil + psiu - it.bound_cl*help.Tl1*help.Zl*help.rho_l + it.bound_cu*help.Tu1*help.Zu*help.rho_u;
             omega_3 = help.PSI1*xi;
             omega = [omega_1;omega_2;omega_3];
+            disp(del_x_a);
+            
             sol = mat\omega;
             del_x = sol(1:n);
             del_y = -sol(n+1:n+m);
@@ -122,12 +134,12 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_QP(iter, nlp, dim)
             mu_n = (it.sl'*it.wl + it.su'*it.wu + it.tl'*it.zl + it.tu'*it.zu)/(2*(n+r));
             obj = cutest_obj(it.x);
 
-            data = [data; iterations obj mu_n mu-mu_n];
+            data(iterations,:) = [iterations obj mu_n mu-mu_n];
         if mu_n < 1*10^(-15)
             break;
         end
     end
-    fprintf('      Iteration  objective     mu-value  difference in mu\n');
-    disp(data);
+    %fprintf('      Iteration  objective     mu-value  difference in mu\n');
+    %disp(data);
     cutest_terminate
 end
