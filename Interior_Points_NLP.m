@@ -1,4 +1,4 @@
-function [nlp,it, iter] = Interior_Points_NLP(max_iter)
+function [nlp,it, iter, data] = Interior_Points_NLP(max_iter)
 % Interior Point Method for general NLPs
     
     % Initialization
@@ -12,6 +12,8 @@ function [nlp,it, iter] = Interior_Points_NLP(max_iter)
     eta = .995;
 
     p = cutest_setup();
+    data = zeros(max_iter,3);
+
 
     iter = 0;
     
@@ -34,7 +36,8 @@ function [nlp,it, iter] = Interior_Points_NLP(max_iter)
         [help] = helpers_nlp(dim, nlp, it,p);
 
 
-        %disp(help.PHI)
+        data(iter, :) = [iter nlp.obj it.mu];
+
 
         mat = [nlp.H + help.PHI   nlp.A'  nlp.C';
              nlp.A   zeros(m)    zeros(m,r);
