@@ -13,20 +13,22 @@ function [it,nlp,dim] = Interior_gen_Init()
         end
     end
     
+    n = dim.n;
+    m = dim.m;
+    r = dim.r;
+    en = ones(n,1);
+    er = ones(r,1);
+    
     %Determine which lines of the constraints are inequalities, which
     %equalities
     j = 0;
     k = 0;
     nlp.equ = zeros(dim.m,1);
     nlp.inequ = zeros(dim.r,1);
-    nlp.cl = zeros(dim.r,1);
-    nlp.cu = zeros(dim.r,1);
     for i = 1:p.m
-        if any([p.cl(i) p.cu(i)])
+        if p.cl(i) || p.cu(i)
             k = k+1;
             nlp.inequ(k) = i;
-            nlp.cl(k) = p.cl(i);
-            nlp.cu(k) = p.cu(i);
         else
             j = j+1;
             nlp.equ(j) = i;
@@ -54,10 +56,10 @@ function [it,nlp,dim] = Interior_gen_Init()
     it.bound_cl = eye(dim.r);
     it.bound_cu = eye(dim.r);
     for i = 1:dim.r
-        if nlp.cl(i) < -10^3
+        if p.cl(i) < -10^3
             it.bound_cl(i,i) = 0;
         end
-        if nlp.cu(i) > 10^3
+        if p.cu(i) > 10^3
             it.bound_cu = 0;
         end
     end
@@ -72,6 +74,48 @@ function [it,nlp,dim] = Interior_gen_Init()
     it.tu = it.bound_cu*ones(dim.r,1);
     it.zl = it.bound_cl*ones(dim.r,1);
     it.zu = it.bound_cu*ones(dim.r,1);
+
+    [nlp] = cutest_iterate(it, nlp, dim,p);
+    [help] = helpers_nlp(dim, nlp, it,p);
+
+    mat = [nlp.H + help.PHI   nlp.A'  nlp.C';
+           nlp.A   zeros(dim.m)    zeros(dim.m,r);
+           nlp.C  zeros(r,dim.m)   -help.PSI1];
+
+    xi = -it.bound_cl*(it.zl + help.Tl1*help.Zl*help.rho_l) + it.bound_cu*(it.zu + help.Tu1*help.Zu*help.rho_u);
+    kappa = -nlp.c_e;
+    nu = - nlp.grad + nlp.A'*it.y + nlp.C'*(it.zl - it.zu) -it.bound_xl*help.Sl1*help.Wl*help.beta_l ...
+            + it.bound_xu*help.Su1*help.Wu*help.beta_u;
+    sol = mat\[nu;kappa;xi];
+
+        del_x = sol(1:n);
+        del_z = -sol(n+m+1:n+m+r);
+
+        % calculate all variables of expanded system
+        del_sl = it.bound_xl*(del_x + help.beta_l);
+        del_su = it.bound_xu*(-del_x + help.beta_u);
+        del_wl = it.bound_xl*(-it.wl -help.Sl1*help.Wl*del_sl);
+        del_wu = it.bound_xu*(-it.wu - help.Su1*help.Wu*del_su);
+
+        del_tl = it.bound_cl*(nlp.C*del_x + help.rho_l);
+        del_tu = it.bound_cu*(-nlp.C*del_x + help.rho_u);
+        del_zl = -it.bound_cl*(help.Tl1*help.Zl*del_tl + it.zl);
+        del_zu = it.bound_cu*(-del_z + del_zl);
+
+
+        % ensure positivity of s, w, t and z (interiority)
+        it.sl = it.bound_xl*max(abs(it.sl + del_sl),en);
+        it.su = it.bound_xu*max(abs(it.su + del_su),en);
+
+        it.wl = it.bound_xl*max(abs(it.wl + del_wl),en);
+        it.wu = it.bound_xu*max(abs(it.wu + del_wu),en);
+
+        it.tl = it.bound_cl*max(abs(it.tl + del_tl),er);
+        it.tu = it.bound_cu*max(abs(it.tu + del_tu),er);
+
+        it.zl = it.bound_cl*max(abs(it.zl + del_zl),er);
+        it.zu = it.bound_cu*max(abs(it.zu + del_zu),er);
+
 
     cutest_terminate;
 end
