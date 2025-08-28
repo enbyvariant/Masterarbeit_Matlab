@@ -1,8 +1,8 @@
-function [nlp,it, iter, data] = Interior_Points_NLP(max_iter)
+function [nlp,it, iter, data] = Interior_Points_NLP(max_iter,p, cue)
 % Interior Point Method for general NLPs
     
     % Initialization
-    [it,nlp,dim] = Interior_gen_Init();
+    [it,nlp,dim] = Interior_gen_Init(cue,p);
     n = dim.n;
     m = dim.m;
     r = dim.r;
@@ -10,15 +10,17 @@ function [nlp,it, iter, data] = Interior_Points_NLP(max_iter)
     er = ones(r,1);
 
     eta = .995;
-
-    p = cutest_setup();
-    data = zeros(max_iter,3);
+    
+    if cue
+        p = cutest_setup();
+    end
+    data = zeros(max_iter,5);
 
 
     iter = 0;
     
     while 1
-        if iter > max_iter
+        if iter >= max_iter
             break
         else
             iter = iter + 1;
@@ -32,11 +34,15 @@ function [nlp,it, iter, data] = Interior_Points_NLP(max_iter)
         end
     
         % calculate affine step
-        [nlp] = cutest_iterate(it, nlp, dim,p);
+        if cue
+            [nlp] = cutest_iterate(it, nlp, dim,p);
+        else
+            [nlp] = iterate(it,p, nlp, dim);
+        end
         [help] = helpers_nlp(dim, nlp, it,p);
 
 
-        data(iter, :) = [iter nlp.obj it.mu];
+        data(iter, :) = [iter nlp.obj it.x(1) it.x(2) it.mu];
 
 
         mat = [nlp.H + help.PHI   nlp.A'  nlp.C';
@@ -136,7 +142,10 @@ function [nlp,it, iter, data] = Interior_Points_NLP(max_iter)
         it.zu = it.zu + alpha*del_zu;
 
     end
-    
-    cutest_terminate;
+    data(iter, :) = [iter nlp.obj it.x(1) it.x(2) it.mu];
+
+    if cue
+        cutest_terminate;
+    end
 
 end

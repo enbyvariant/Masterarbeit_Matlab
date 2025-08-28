@@ -5,7 +5,6 @@ function [nlp] = cutest_iterate(it, nlp, dim,p)
     r = dim.r;
     n = dim.n;
     
-    %disp(it.x);
     [cons, J] = cutest_cons(it.x);
     nlp.c_e = cons(nlp.equ);
     nlp.c_i = cons(nlp.inequ);

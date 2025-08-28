@@ -1,6 +1,8 @@
-function [it,nlp,dim] = Interior_gen_Init()
+function [it,nlp,dim] = Interior_gen_Init(cue,p)
     
-    p = cutest_setup;
+    if cue
+        p = cutest_setup;
+    end
     dim.n = p.n;
     dim.m = p.m;
     dim.r = 0;
@@ -60,7 +62,7 @@ function [it,nlp,dim] = Interior_gen_Init()
             it.bound_cl(i,i) = 0;
         end
         if p.cu(i) > 10^3
-            it.bound_cu = 0;
+            it.bound_cu(i,i) = 0;
         end
     end
        
@@ -71,11 +73,17 @@ function [it,nlp,dim] = Interior_gen_Init()
     it.wl = it.bound_xl*ones(dim.n,1);
     it.wu = it.bound_xu*ones(dim.n,1);
     it.tl = it.bound_cl*ones(dim.r,1);
+    dim.r
+    disp(it.tl)
     it.tu = it.bound_cu*ones(dim.r,1);
     it.zl = it.bound_cl*ones(dim.r,1);
     it.zu = it.bound_cu*ones(dim.r,1);
-
-    [nlp] = cutest_iterate(it, nlp, dim,p);
+    
+    if cue
+        [nlp] = cutest_iterate(it, nlp, dim,p);
+    else
+        [nlp] = iterate(it,p, nlp, dim);
+    end
     [help] = helpers_nlp(dim, nlp, it,p);
 
     mat = [nlp.H + help.PHI   nlp.A'  nlp.C';
@@ -116,6 +124,7 @@ function [it,nlp,dim] = Interior_gen_Init()
         it.zl = it.bound_cl*max(abs(it.zl + del_zl),er);
         it.zu = it.bound_cu*max(abs(it.zu + del_zu),er);
 
-
-    cutest_terminate;
+    if cue
+        cutest_terminate;
+    end
 end
