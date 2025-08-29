@@ -40,8 +40,8 @@ function [it,nlp,dim] = Interior_gen_Init(cue,p)
     % determine all general boundaries for x
     nlp.xl = p.bl;
     nlp.xu = p.bu;
-    it.bound_xl = eye(dim.n);
-    it.bound_xu = eye(dim.n);
+    it.bound_xl = sparse(eye(dim.n));
+    it.bound_xu = sparse(eye(dim.n));
 
     for i = 1:dim.n
         if nlp.xl(i) < -10^3
@@ -55,8 +55,8 @@ function [it,nlp,dim] = Interior_gen_Init(cue,p)
     end
 
     %determine the boundaries for Cx
-    it.bound_cl = eye(dim.r);
-    it.bound_cu = eye(dim.r);
+    it.bound_cl = sparse(eye(dim.r));
+    it.bound_cu = sparse(eye(dim.r));
     for i = 1:dim.r
         if p.cl(i) < -10^3
             it.bound_cl(i,i) = 0;
@@ -66,18 +66,16 @@ function [it,nlp,dim] = Interior_gen_Init(cue,p)
         end
     end
        
-    it.x = ones(dim.n,1);
-    it.y = ones(dim.m,1);
-    it.sl = it.bound_xl*ones(dim.n,1);
-    it.su = it.bound_xu*ones(dim.n,1);
-    it.wl = it.bound_xl*ones(dim.n,1);
-    it.wu = it.bound_xu*ones(dim.n,1);
-    it.tl = it.bound_cl*ones(dim.r,1);
-    dim.r
-    disp(it.tl)
-    it.tu = it.bound_cu*ones(dim.r,1);
-    it.zl = it.bound_cl*ones(dim.r,1);
-    it.zu = it.bound_cu*ones(dim.r,1);
+    it.x = sparse(ones(dim.n,1));
+    it.y = sparse(ones(dim.m,1));
+    it.sl = sparse(it.bound_xl*ones(dim.n,1));
+    it.su = sparse(it.bound_xu*ones(dim.n,1));
+    it.wl = sparse(it.bound_xl*ones(dim.n,1));
+    it.wu = sparse(it.bound_xu*ones(dim.n,1));
+    it.tl = sparse(it.bound_cl*ones(dim.r,1));
+    it.tu = sparse(it.bound_cu*ones(dim.r,1));
+    it.zl = sparse(it.bound_cl*ones(dim.r,1));
+    it.zu = sparse(it.bound_cu*ones(dim.r,1));
     
     if cue
         [nlp] = cutest_iterate(it, nlp, dim,p);
@@ -112,17 +110,17 @@ function [it,nlp,dim] = Interior_gen_Init(cue,p)
 
 
         % ensure positivity of s, w, t and z (interiority)
-        it.sl = it.bound_xl*max(abs(it.sl + del_sl),en);
-        it.su = it.bound_xu*max(abs(it.su + del_su),en);
+        it.sl = it.bound_xl*max(abs(it.sl + del_sl),0.1*en);
+        it.su = it.bound_xu*max(abs(it.su + del_su),0.1*en);
 
-        it.wl = it.bound_xl*max(abs(it.wl + del_wl),en);
-        it.wu = it.bound_xu*max(abs(it.wu + del_wu),en);
+        it.wl = it.bound_xl*max(abs(it.wl + del_wl),0.1*en);
+        it.wu = it.bound_xu*max(abs(it.wu + del_wu),0.1*en);
 
-        it.tl = it.bound_cl*max(abs(it.tl + del_tl),er);
-        it.tu = it.bound_cu*max(abs(it.tu + del_tu),er);
+        it.tl = it.bound_cl*max(abs(it.tl + del_tl),0.1*er);
+        it.tu = it.bound_cu*max(abs(it.tu + del_tu),0.1*er);
 
-        it.zl = it.bound_cl*max(abs(it.zl + del_zl),er);
-        it.zu = it.bound_cu*max(abs(it.zu + del_zu),er);
+        it.zl = it.bound_cl*max(abs(it.zl + del_zl),0.1*er);
+        it.zu = it.bound_cu*max(abs(it.zu + del_zu),0.1*er);
 
     if cue
         cutest_terminate;
