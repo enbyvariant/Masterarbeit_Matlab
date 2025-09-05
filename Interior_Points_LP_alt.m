@@ -1,4 +1,4 @@
-function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, nlp,dim)
+function [it, obj, iterations, data] = Interior_Points_LP_alt(iter, nlp,dim)
     
     % Initial values
     n = dim.n;
@@ -13,7 +13,10 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, nlp,di
     iterations = 0;
     data = [];
     p = cutest_setup;
+    help = helpers(dim,nlp,it);
 
+    name = genvarname(string(iterations));
+    data.(name) = it_log_lp(iterations, it, nlp, 0, 'n.a.', 'n.a.', help, dim);
 
     while 1
         if iterations > iter
@@ -38,6 +41,9 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, nlp,di
 
             % calculate affine step
             sol = mat\omega;
+            if(any(isnan(sol)))
+                sol = lsqminnorm(mat,omega);
+            end
             del_x_a = sol(1:n);
     
             del_sl_a = it.bound_xl*(del_x_a + help.beta_l);
@@ -92,6 +98,9 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, nlp,di
 
             % calculate new step
             sol = mat\omega;
+            if(any(isnan(sol)))
+                sol = lsqminnorm(mat,omega);
+            end
             del_x = sol(1:n);
             del_y = -sol(n+1:n+m);
             del_sl = it.bound_xl*(del_x + help.beta_l);
@@ -128,11 +137,12 @@ function [it, mu_n, obj, iterations, data] = Interior_Points_LP_alt(iter, nlp,di
             it.wl = it.wl + alpha_dual*del_wl;
             it.wu = it.wu + alpha_dual*del_wu;
 
-            mu_n = (it.sl'*it.wl + it.su'*it.wu + it.tl'*it.zl + it.tu'*it.zu)/(2*(n+r));
+            it.mu = (it.sl'*it.wl + it.su'*it.wu + it.tl'*it.zl + it.tu'*it.zu)/(2*(n+r));
             obj = cutest_obj(it.x);
-
-            data = [data; iterations obj mu_n mu-mu_n];
-        if mu_n < 1*10^(-15)
+            name = genvarname(string(iterations));
+            data.(name) = it_log_lp(iterations, it, nlp, sigma, alpha_pri, alpha_dual, help, dim);
+            %data = [data; iterations obj mu_n mu-mu_n];
+        if it.mu < 1*10^(-15)
             break;
         end
     end
