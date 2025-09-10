@@ -10,7 +10,7 @@ f(p.X) = sin(p.X(1)) + p.X(2)^2;
 p.f = Symbolic_Function(f,p.X);
 
 p.c_e = [];
-c_i = [p.X(1)+p.X(2) - 2;-p.X(1) + p.X(2) + 1];
+c_i = [-p.X(1)-p.X(2) + 2;-p.X(1) + p.X(2) + 1];
 p.c_i = [Symbolic_Function(c_i(1),p.X);
             Symbolic_Function(c_i(2),p.X)];
 p.bl = zeros(2,1);

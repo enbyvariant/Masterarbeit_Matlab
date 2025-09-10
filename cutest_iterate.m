@@ -5,12 +5,12 @@ function [nlp] = cutest_iterate(it, nlp, dim,p)
     r = dim.r;
     n = dim.n;
     
-    [cons, J] = cutest_cons(it.x);
+    [cons, J] = cutest_scons(it.x);
     nlp.c_e = cons(nlp.equ);
     nlp.c_i = cons(nlp.inequ);
     nlp.A = J(nlp.equ,:);
     if isempty(nlp.A)
-        nlp.A = zeros(m,n);
+        nlp.A = sparse(m,n);
     end
     nlp.C = J(nlp.inequ,:);
 
@@ -19,7 +19,7 @@ function [nlp] = cutest_iterate(it, nlp, dim,p)
     lambda(nlp.inequ) = it.zl - it.zu;
 
     [nlp.L, nlp.l_grad] = cutest_lag(it.x,lambda);
-    nlp.H = cutest_hess(it.x,lambda);
+    nlp.H = cutest_sphess(it.x,lambda);
     
     [nlp.obj, nlp.grad] = cutest_obj(it.x);
 
