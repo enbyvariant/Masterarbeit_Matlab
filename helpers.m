@@ -2,43 +2,64 @@ function [help] = helpers(dim, nlp, it)
 %   UNTITLED3 Summary of this function goes here
 %   Detailed explanation goes here
 
-    help.beta_l = it.x - nlp.xl - it.sl;
-    help.beta_u = -it.x + nlp.xu - it.su;
-    help.rho_l = nlp.C*it.x - nlp.cl - it.tl;
-    help.rho_u = -nlp.C*it.x + nlp.cu - it.tu;
+    help.beta_l = it.bound_xl*(it.x - nlp.xl - it.sl);
+    help.beta_u = it.bound_xu*(-it.x + nlp.xu - it.su);
+    help.rho_l = it.bound_cl*(nlp.C*it.x - nlp.cl - it.tl);
+    help.rho_u = it.bound_cu*(-nlp.C*it.x + nlp.cu - it.tu);
 
-    help.Sl1 = zeros(dim.n);
-    help.Su1 = zeros(dim.n);
+    gen_i = 1:dim.n;
+    gen_j = 1:dim.n;
+    Slv = zeros(dim.n,1);
+    Suv = zeros(dim.n,1);    
+
     for i = 1:dim.n
         if it.sl(i) ~= 0
-            help.Sl1(i,i) = 1/it.sl(i);
+            Slv(i) = 1/it.sl(i);
+        else
+            Slv(i) = 0;
         end
         if it.su(i) ~= 0
-            help.Su1(i,i) = 1/it.su(i);
+            Suv(i) = 1/it.su(i);
+        else
+            Suv(i) = 0;
         end
     end
-    help.Wl = diag(it.wl);
-    help.Wu = diag(it.wu);
+    help.Sl1 = sparse(gen_i, gen_j, Slv, dim.n, dim.n);
+    help.Su1 = sparse(gen_i, gen_j, Suv, dim.n, dim.n);
+
+    help.Wl = sparse(gen_i, gen_j, it.wl);
+    help.Wu = sparse(gen_i, gen_j, it.wu);
             
-    help.Tl1 = zeros(dim.r);
-    help.Tu1 = zeros(dim.r);
+    gen_i = 1:dim.r;
+    gen_j = 1:dim.r;
+    Tlv = zeros(dim.r,1);
+    Tuv = zeros(dim.r,1);    
     for i = 1:dim.r
         if it.tl(i) ~= 0
-            help.Tl1(i,i) = 1/it.tl(i);
+            Tlv(i) = 1/it.tl(i);
+        else
+            Tlv(i) = 0;
         end
         if it.tu(i) ~= 0
-            help.Tu1(i,i) = 1/it.tu(i);
+            Tuv(i) = 1/it.tu(i);
         end
     end
-    help.Zl = diag(it.zl);
-    help.Zu = diag(it.zu);               
-    help.PHI = it.bound_xl*help.Sl1*help.Wl + it.bound_xu*help.Su1*help.Wu;
+    help.Tl1 = sparse(gen_i,gen_j, Tlv, dim.r, dim.r);
+    help.Tu1 = sparse(gen_i, gen_j, Tuv, dim.r,dim.r);
+
+    help.Zl = sparse(gen_i, gen_j, it.zl, dim.r, dim.r);
+    help.Zu = sparse(gen_i, gen_j, it.zu, dim.r, dim.r);     
+
+    help.PHI = sparse(it.bound_xl*help.Sl1*help.Wl + it.bound_xu*help.Su1*help.Wu);
     PSI = it.bound_cl*help.Tl1*help.Zl + it.bound_cu*help.Tu1*help.Zu;
-    help.PSI1 = zeros(dim.r);
+    Pv = zeros(dim.r,1);
         for i = 1:dim.r
             if PSI(i,i) ~= 0
-            help.PSI1(i,i) = 1/PSI(i,i);
+                Pv(i) = 1/PSI(i,i);
+            else
+                Pv(i) = 0;
             end
         end
+    help.PSI1 = sparse(gen_i, gen_j, Pv, dim.r, dim.r);
 
 end
