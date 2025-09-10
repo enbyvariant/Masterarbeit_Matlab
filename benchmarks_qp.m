@@ -11,6 +11,7 @@ len = length(myFiles);
 cd(lps);
 for k = len:-1:1
     baseFileName = myFiles(k).name;
+    name = genvarname(baseFileName);
     fprintf(1, 'Now reading %s\n', baseFileName);
     
     cd(baseFileName);
@@ -18,12 +19,11 @@ for k = len:-1:1
     if f
         data.toobig = 1;
     else
-        [~, ~, data] = Interior_Points_QP(30, nlp, dim);
-        data.p_name = baseFileName;
-        encoded = jsonencode(data);
-        fprintf(fid,'%s',encoded);
+        [~, ~, data.(name)] = Interior_Points_QP(30, nlp, dim);
     end
     cd('..')
 end
+encoded = jsonencode(data);
+fprintf(fid,'%s',encoded);
 fclose(fid);
 end
