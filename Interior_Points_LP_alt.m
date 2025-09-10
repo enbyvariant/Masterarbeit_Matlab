@@ -1,4 +1,4 @@
-function [it, obj, iterations, data] = Interior_Points_LP_alt(iter, nlp,dim)
+function [it, iterations, data] = Interior_Points_LP_alt(iter, nlp,dim)
     
     % Initial values
     n = dim.n;
@@ -16,7 +16,8 @@ function [it, obj, iterations, data] = Interior_Points_LP_alt(iter, nlp,dim)
     help = helpers(dim,nlp,it);
 
     name = genvarname(string(iterations));
-    data.(name) = it_log_lp(iterations, it, nlp, 0, 'n.a.', 'n.a.', help, dim);
+    data.(name) = it_log_lp(iterations, it, nlp, 0, 0, 0, help, dim);
+    data.success = 0;
 
     while 1
         if iterations > iter
@@ -29,8 +30,8 @@ function [it, obj, iterations, data] = Interior_Points_LP_alt(iter, nlp,dim)
             
             %set up the affine equation system
             mat = [help.PHI     nlp.A'         nlp.C';
-                    nlp.A    zeros(m)   zeros(m,r);
-                    nlp.C    zeros(r,m)   -help.PSI1   ];
+                    nlp.A    sparse(m,m)   sparse(m,r);
+                    nlp.C    sparse(r,m)   -help.PSI1   ];
             % disp(rank(full(mat)));
             % disp(size(mat));
             omega_1 = - nlp.c + nlp.A'*it.y + nlp.C'*(it.zl - it.zu) - it.bound_xl*help.Sl1*help.Wl*help.beta_l + it.bound_xu*help.Su1*help.Wu*help.beta_u;
@@ -88,8 +89,8 @@ function [it, obj, iterations, data] = Interior_Points_LP_alt(iter, nlp,dim)
             % set up equation system
             psil = it.bound_cl*(it.zl - sigma*mu*help.Tl1*er + help.Tl1*diag(del_tl_a)*diag(del_zl_a)*er);
             psiu = it.bound_cu*(it.zu - sigma*mu*help.Tu1*er + help.Tu1*diag(del_tu_a)*diag(del_zu_a)*er);
-            phil = it.bound_xl*(it.wl - help.Sl1*sigma*mu*en + help.Sl1*diag(del_sl_a)*diag(del_wl_a)*en);
-            phiu = it.bound_xu*(it.wu - help.Su1*sigma*mu*en + help.Su1*diag(del_su_a)*diag(del_wu_a)*en);
+            phil = it.bound_xl*(it.wl - sigma*mu*help.Sl1*en + help.Sl1*diag(del_sl_a)*diag(del_wl_a)*en);
+            phiu = it.bound_xu*(it.wu - sigma*mu*help.Su1*en + help.Su1*diag(del_su_a)*diag(del_wu_a)*en);
             
             omega_1 = -nlp.c + nlp.A'*it.y + nlp.C'*(it.zl-it.zu) + it.bound_xl*it.wl - it.bound_xu*it.wu - it.bound_xl*(phil + help.Sl1*help.Wl*help.beta_l) + it.bound_xu*(phiu + help.Su1*help.Wu*help.beta_u);
             xi = -psil + psiu - it.bound_cl*help.Tl1*help.Zl*help.rho_l + it.bound_cu*help.Tu1*help.Zu*help.rho_u;
@@ -138,15 +139,24 @@ function [it, obj, iterations, data] = Interior_Points_LP_alt(iter, nlp,dim)
             it.wu = it.wu + alpha_dual*del_wu;
 
             it.mu = (it.sl'*it.wl + it.su'*it.wu + it.tl'*it.zl + it.tu'*it.zu)/(2*(n+r));
-            obj = cutest_obj(it.x);
+            %obj = cutest_obj(it.x);
             name = genvarname(string(iterations));
             data.(name) = it_log_lp(iterations, it, nlp, sigma, alpha_pri, alpha_dual, help, dim);
-            %data = [data; iterations obj mu_n mu-mu_n];
-        if it.mu < 1*10^(-15)
+            convergence = max([data.(name).pri_fea, data.(name).dual_fea, data.(name).compl]);
+            if convergence < 10^(-6)
+                data.success = 1;
+                break
+            end
+        if it.mu < 1*10^(-12)
+            data.success = 1;
             break;
         end
+        if it.mu > 1*10^50
+            fprintf(1,"did not converge\n");
+            break
+        end
     end
-    fprintf('      Iteration  objective     mu-value  difference in mu\n');
+    
     disp(data);
     cutest_terminate
 end

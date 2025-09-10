@@ -1,9 +1,12 @@
-function [nlp,it, iter, data] = Interior_Points_NLP(max_iter,p, cue)
+function [nlp,it, iter, data] = Interior_Points_NLP(max_iter)%, cue)%,p, cue, gamma)
 % Interior Point Method for general NLPs
     
     % Initialization
-    [it,nlp,dim] = Interior_gen_Init(cue,p);
+    [it,nlp,dim] = Interior_gen_Init();%cue);%,p, gamma);
     n = dim.n;
+    % if n > 10000
+    %     return
+    % end
     m = dim.m;
     r = dim.r;
     en = ones(n,1);
@@ -11,13 +14,18 @@ function [nlp,it, iter, data] = Interior_Points_NLP(max_iter,p, cue)
 
     eta = .995;
     
-    if cue
+    % if cue(1)
         p = cutest_setup();
-    end
-    data = zeros(max_iter,5);
+    % end
 
-
+    gamma.reg = 0;
     iter = 0;
+
+    %data = zeros(max_iter,4);
+    help = helpers_nlp(dim, nlp, it);
+
+    name = genvarname(string(iter));
+    data.(name) = it_log_nlp(iter, it, nlp, 0, 'n.a.', help, dim);
     
     while 1
         if iter >= max_iter
@@ -29,25 +37,31 @@ function [nlp,it, iter, data] = Interior_Points_NLP(max_iter,p, cue)
 
         % duality measure
         it.mu = (it.sl'*it.wl + it.su'*it.wu + it.tl'*it.zl + it.tu'*it.zu)/(2*n + 2*r);
-        if it.mu < 10^(-15)
+        if it.mu < 10^(-12)
             break
         end
     
         % calculate affine step
-        if cue
+        % if cue(1)
             [nlp] = cutest_iterate(it, nlp, dim,p);
-        else
-            [nlp] = iterate(it,p, nlp, dim);
-        end
-        [help] = helpers_nlp(dim, nlp, it,p);
+        % else
+        %     [nlp] = iterate(it,p, nlp, dim);
+        % end
 
 
-        data(iter, :) = [iter nlp.obj it.x(1) it.x(2) it.mu];
+        %data(iter, :) = [iter nlp.obj it.x(1) it.mu];
 
+        % if cue(2)
+            [gamma] = matrix_factors(help, gamma, dim, nlp);
+        %     Conv = -gamma.con*eye(m);
+        % else
+            Conv = sparse(m,m);
+        % end
+        Hphi = nlp.H + help.PHI+ gamma.reg*eye(n);
 
-        mat = [nlp.H + help.PHI   nlp.A'  nlp.C';
-             nlp.A   zeros(m)    zeros(m,r);
-             nlp.C  zeros(r,m)   -help.PSI1];
+        mat = [Hphi   nlp.A'  nlp.C';
+             nlp.A   Conv    sparse(m,r);
+             nlp.C  sparse(r,m)   -help.PSI1];
 
         nu = - nlp.grad + nlp.A'*it.y + nlp.C'*(it.zl - it.zu) -it.bound_xl*help.Sl1*help.Wl*help.beta_l ...
             + it.bound_xu*help.Su1*help.Wu*help.beta_u;
@@ -57,6 +71,9 @@ function [nlp,it, iter, data] = Interior_Points_NLP(max_iter,p, cue)
     
 
         sol = mat\omega;
+        if any(isnan(sol))
+            sol = lsqminnorm(mat,omega);
+        end
         del_x = sol(1:n);
 
         del_sl = it.bound_xl*(del_x + help.beta_l);
@@ -102,6 +119,10 @@ function [nlp,it, iter, data] = Interior_Points_NLP(max_iter,p, cue)
         omega = [nu; -nlp.c_e ; help.PSI1*xi];
 
         sol = mat\omega;
+        if any(isnan(sol))
+            disp("buh")
+            sol = lsqminnorm(mat,omega);
+        end
         del_x = sol(1:n);
         del_y = - sol(n+1:n+m);
 
@@ -141,11 +162,15 @@ function [nlp,it, iter, data] = Interior_Points_NLP(max_iter,p, cue)
         it.zl = it.zl + alpha*del_zl;
         it.zu = it.zu + alpha*del_zu;
 
-    end
-    data(iter, :) = [iter nlp.obj it.x(1) it.x(2) it.mu];
+        [help] = helpers_nlp(dim, nlp, it,p);
+        name = genvarname(string(iter));
+        data.(name) = it_log_nlp(iter, it, nlp, sigma, alpha, help, dim);
 
-    if cue
-        cutest_terminate;
     end
+    % data(iter, :) = [iter nlp.obj it.x(1) it.mu];
+
+    % if cue(1)
+        cutest_terminate;
+    % end
 
 end

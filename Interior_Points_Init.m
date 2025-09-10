@@ -20,12 +20,12 @@ function [it] = Interior_Points_Init(nlp,dim)
     index_l = ones(1,n);
     index_u = ones(1,n);
     for i = 1:n
-        if nlp.xl(i) < -10^3
+        if nlp.xl(i) < -10^7
             nlp.xl(i) = 0;
             it.wl(i) = 0; 
             index_l(i) = 0;
         end
-        if nlp.xu(i) > 10^3
+        if nlp.xu(i) > 10^7
             nlp.xu(i) = 0;
             it.wu(i) = 0;
             index_u(i) = 0;
@@ -40,19 +40,6 @@ function [it] = Interior_Points_Init(nlp,dim)
     it.su = it.bound_xu*ones(n,1);
 
     %prepare equation system
-    Sl1 = zeros(n);
-    Su1 = zeros(n);
-    for i = 1:n
-        if it.sl(i) ~= 0
-            Sl1(i,i) = 1/it.sl(i);
-        end
-        if it.su(i) ~= 0
-            Su1(i,i) = 1/it.su(i);
-        end
-    end
-    Wl = diag(it.wl);
-    Wu = diag(it.wu);
-
         index_cl = ones(1,r);
         index_cu = ones(1,r);
         for i = 1:r
@@ -68,8 +55,6 @@ function [it] = Interior_Points_Init(nlp,dim)
                 index_cu(i) = 0;
             end
         end
-        Zl = diag(it.zl);
-        Zu = diag(it.zu);
         index_cl = find(index_cl);
         index_cu = find(index_cu);
         it.bound_cl = sparse(index_cl, index_cl, ones(size(index_cl)), r, r);
@@ -77,48 +62,41 @@ function [it] = Interior_Points_Init(nlp,dim)
 
         it.tl = it.bound_cl*ones(r,1);
         it.tu = it.bound_cu*ones(r,1);
-        Tl1 = zeros(r);
-        Tu1 = zeros(r);
-        for i = 1:r
-            if it.tl(i) ~= 0
-            Tl1(i,i) = 1/it.tl(i);
-            end
-            if it.tu(i) ~= 0
-                Tu1(i,i) = 1/it.tu(i);
-            end
-        end
+
+        help = helpers(dim, nlp, it);
+
 
         % helping variables
-        rhol = it.bound_cl*(nlp.C*it.x-nlp.cl-it.tl);
-        rhou = it.bound_cu*(-nlp.C*it.x + nlp.cu - it.tu);
-        betal = it.bound_xl*(it.x-nlp.xl-it.sl);
-        betau = it.bound_xu*(-it.x+nlp.xu-it.su);
-        Hphi = nlp.H + Sl1*Wl + Su1*Wu;
-        psi = Tl1*Zl +Tu1*Zu;
-        xi = -it.bound_cl*(it.zl + Tl1*Zl*rhol) + it.bound_cu*(it.zu + Tu1*Zu*rhou);
-        foo = psi\xi;
+        Hphi = nlp.H + help.PHI;
+        xi = -it.bound_cl*(it.zl + help.Tl1*help.Zl*help.rho_l) + it.bound_cu*(it.zu + help.Tu1*help.Zu*help.rho_u);
+        foo = help.PSI1*xi;
 
         % calculate affine step with reduced system
         mat = [Hphi nlp.A' nlp.C';
-            nlp.A zeros(m,m + r);
-            nlp.C zeros(r,m) inv(psi)];
-        omega = [-nlp.H*it.x - nlp.c + nlp.A'*it.y + nlp.C'*it.bound_cl*it.zl - nlp.C'*it.bound_cu*it.zu - it.bound_xl*Sl1*Wl*betal + it.bound_xu*Su1*Wu*betau;
+            nlp.A sparse(m,m + r);
+            nlp.C sparse(r,m) help.PSI1];
+        omega = [-nlp.H*it.x - nlp.c + nlp.A'*it.y + ...
+            nlp.C'*it.bound_cl*it.zl - nlp.C'*it.bound_cu*it.zu ...
+            - it.bound_xl*help.Sl1*help.Wl*help.beta_l + it.bound_xu*help.Su1*help.Wu*help.beta_u;
             -(nlp.A*it.x-nlp.b);
             foo];
         sol = mat\omega;
+        if any(isnan(sol))
+            sol = lsqminnorm(mat, omega);
+        end
 
         del_x = sol(1:n);
         del_z = -sol(n+m+1:n+m+r);
 
         % calculate all variables of expanded system
-        del_sl = it.bound_xl*(del_x + betal);
-        del_su = it.bound_xu*(-del_x + betau);
-        del_wl = it.bound_xl*(-it.wl -Sl1*Wl*del_sl);
-        del_wu = it.bound_xu*(-it.wu - Su1*Wu*del_su);
+        del_sl = it.bound_xl*(del_x + help.beta_l);
+        del_su = it.bound_xu*(-del_x + help.beta_u);
+        del_wl = it.bound_xl*(-it.wl -help.Sl1*help.Wl*del_sl);
+        del_wu = it.bound_xu*(-it.wu - help.Su1*help.Wu*del_su);
 
-        del_tl = it.bound_cl*(nlp.C*del_x + rhol);
-        del_tu = it.bound_cu*(-nlp.C*del_x + rhou);
-        del_zl = -it.bound_cl*(Tl1*Zl*del_tl + it.zl);
+        del_tl = it.bound_cl*(nlp.C*del_x + help.rho_l);
+        del_tu = it.bound_cu*(-nlp.C*del_x + help.rho_u);
+        del_zl = -it.bound_cl*(help.Tl1*help.Zl*del_tl + it.zl);
         del_zu = it.bound_cu*(-del_z + del_zl);
 
 
@@ -134,6 +112,8 @@ function [it] = Interior_Points_Init(nlp,dim)
 
         it.zl = it.bound_cl*max(abs(it.zl + del_zl),er);
         it.zu = it.bound_cu*max(abs(it.zu + del_zu),er);
+
+        it.mu = (it.sl'*it.wl + it.su'*it.wu + it.tl'*it.zl + it.tu'*it.zu)/(2*(n+r));
         
     
 end
