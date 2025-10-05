@@ -1,170 +1,186 @@
-% Implementation of the Interior Points Method for LPs
-% jetzt auch in github
+function [it, iterations, data, convergence] = Interior_Points_QP(iter, nlp, dim, rnd)
+% Implementation of the Interior Point method for convex quadratic
+% problems (QPs)
+% Returns the final iterate it, the number of iterations executed
+% iterations, the iteration log data and the final error term convergence
 
-function [it, iterations, data] = Interior_Points_QP(iter, nlp, dim)
-    
-    % Initial values
+    % Problem dimensions
     n = dim.n;
     m = dim.m;
     r = dim.r;
+
+    % helping variables
     en = sparse(ones(n,1));
     er = sparse(ones(r,1));
     eta = 0.995;
 
     % Compute starting point
-    [it] = Interior_Points_Init(nlp,dim);
-    % it.x = ones(dim.n,1);
-    % it.y = ones(dim.m,1);
-    % it.sl = it.bound_xl*ones(dim.n,1);
-    % it.su = it.bound_xu*ones(dim.n,1);
-    % it.wl = it.bound_xl*ones(dim.n,1);
-    % it.wu = it.bound_xu*ones(dim.n,1);
-    % it.tl = it.bound_cl*ones(dim.r,1);
-    % it.tu = it.bound_cu*ones(dim.r,1);
-    % it.zl = it.bound_cl*ones(dim.r,1);
-    % it.zu = it.bound_cu*ones(dim.r,1);
-
-
+    [it] = Interior_Points_Init(nlp,dim, rnd);
+    
+    %helping variables for the equation system
     help = helpers(dim, nlp, it);
-
+    
+    % Initialize return values
     iterations = 0;
-
     data = [];
-    name = genvarname(string(iterations));
-    data.(name) = it_log_qp(iterations, it, nlp, 0, 'n.a.', help, dim);
 
+    % Iteration log for the starting point
+    name = genvarname(string(iterations));
+    data.success = 0;
+    data.nan = 0;
+    data.(name) = it_log_qp(iterations, it, nlp, 0, 0, help, dim);
+    
+    % check regularity of A if desired
+    % DO NOT RUN FOR LARGER PROBLEMS
+    % if rank(full(nlp.A)) < dim.m
+    %     data.reg = 0;
+    % else
+    %     data.reg = 1;
+    % end
 
     while 1
-        if iterations > iter
+        % maximal iterations reached
+        if iterations >= iter
             break;
         end
         iterations = iterations + 1;
             
-            % update helping variables
-            %[help] = helpers(dim, nlp, it);
-            
-            % calculate affine step
-            Hphi = nlp.H + help.PHI;
-            disp(iterations);
-             mat = [Hphi     nlp.A'         nlp.C';
-                   nlp.A   sparse(m,m)   sparse(m,r);
-                   nlp.C   sparse(r,m)   -help.PSI1 ];
-            omega_1 = -nlp.H*it.x - nlp.c + nlp.A'*it.y + nlp.C'*(it.zl - it.zu) - ...
-                it.bound_xl*help.Sl1*help.Wl*help.beta_l + it.bound_xu*help.Su1*help.Wu*help.beta_u;
-            omega_2 = -(nlp.A*it.x -nlp.b);
-            xi = -it.zl - it.bound_cl*help.Tl1*help.Zl*help.rho_l + it.zu + it.bound_cu*help.Tu1*help.Zu*help.rho_u;
-            omega_3 = help.PSI1*xi;
-            omega = [omega_1; omega_2; omega_3];
+        % calculate affine step
+        Hphi = nlp.H + help.PHI;
+         mat = [Hphi     nlp.A'         nlp.C';
+               nlp.A   sparse(m,m)   sparse(m,r);
+               nlp.C   sparse(r,m)   -help.PSI1 ];
+        omega_1 = -nlp.H*it.x - nlp.c + nlp.A'*it.y + nlp.C'*(it.zl - it.zu) - ...
+            it.bound_xl*help.Sl1*help.Wl*help.beta_l + it.bound_xu*help.Su1*help.Wu*help.beta_u;
+        omega_2 = -(nlp.A*it.x -nlp.b);
+        xi = -it.zl - it.bound_cl*help.Tl1*help.Zl*help.rho_l + it.zu + it.bound_cu*help.Tu1*help.Zu*help.rho_u;
+        omega_3 = help.PSI1*xi;
+        omega = [omega_1; omega_2; omega_3];
 
-            sol = mat\omega;
-            if any(isnan(sol))
-                sol = lsqminnorm(mat, omega);
-            end
-            del_x_a = sol(1:n);
+        sol = mat\omega;
+
+        % If mat is singular, compute minimum value of 
+        % |mat*del - omega|
+        if any(isnan(sol))
+            sol = lsqminnorm(mat, omega);
+        end
+
+        % Affine step
+        del_x_a = sol(1:n);
+
+        del_sl_a = it.bound_xl*(del_x_a + help.beta_l);
+        del_su_a = it.bound_xu*(-del_x_a + help.beta_u);
+        del_wl_a = it.bound_xl*(-it.wl -help.Sl1*help.Wl*del_sl_a);
+        del_wu_a = it.bound_xu*(-it.wu - help.Su1*help.Wu*del_su_a);
     
-            del_sl_a = it.bound_xl*(del_x_a + help.beta_l);
-            del_su_a = it.bound_xu*(-del_x_a + help.beta_u);
-            del_wl_a = it.bound_xl*(-it.wl -help.Sl1*help.Wl*del_sl_a);
-            del_wu_a = it.bound_xu*(-it.wu - help.Su1*help.Wu*del_su_a);
+        del_tl_a = it.bound_cl*(nlp.C*del_x_a + help.rho_l);
+        del_tu_a = it.bound_cu*(-nlp.C*del_x_a + help.rho_u);
+        del_zu_a = it.bound_cu*(-it.zu -help.Tu1*help.Zu*del_tu_a);
+        del_zl_a = it.bound_cl*(-it.zl - help.Tl1*help.Zl*del_tl_a);
         
-            del_tl_a = it.bound_cl*(nlp.C*del_x_a + help.rho_l);
-            del_tu_a = it.bound_cu*(-nlp.C*del_x_a + help.rho_u);
-            del_zu_a = it.bound_cu*(-it.zu -help.Tu1*help.Zu*del_tu_a);
-            del_zl_a = it.bound_cl*(-it.zl - help.Tl1*help.Zl*del_tl_a);
-            
-            % calculate duality measure
-            % it.mu = (it.sl'*it.wl + it.su'*it.wu + it.tl'*it.zl + it.tu'*it.zu)/(2*(n+r));
-            
-            % calculate affine step length
-            step = [del_sl_a; del_su_a; del_wl_a; del_wu_a;...
-                del_tl_a; del_tu_a; del_zl_a; del_zu_a];
-            curr = [it.sl; it.su; it.wl; it.wu; it.tl; it.tu; it.zl; it.zu];
-            [alpha] = step_length(step, curr, 1);
-            
-            % calculate affine duality measure
-            sl_a = it.sl + alpha*del_sl_a;
-            su_a = it.su + alpha*del_su_a;
-            wl_a = it.wl + alpha*del_wl_a;
-            wu_a = it.wu + alpha*del_wu_a;
-            tl_a = it.tl + alpha*del_tl_a;
-            tu_a = it.tu + alpha*del_tu_a;
-            zl_a = it.zl + alpha*del_zl_a;
-            zu_a = it.zu + alpha*del_zu_a;
-            mu_aff = (sl_a'*wl_a + su_a'*wu_a + tl_a'*zl_a + tu_a'*zu_a)/(2*(n+r));
+        % calculate affine step length
+        step = [del_sl_a; del_su_a; del_wl_a; del_wu_a;...
+            del_tl_a; del_tu_a; del_zl_a; del_zu_a];
+        curr = [it.sl; it.su; it.wl; it.wu; it.tl; it.tu; it.zl; it.zu];
+        [alpha] = step_length(step, curr, 1);
+        
+        % calculate affine duality measure
+        sl_a = it.sl + alpha*del_sl_a;
+        su_a = it.su + alpha*del_su_a;
+        wl_a = it.wl + alpha*del_wl_a;
+        wu_a = it.wu + alpha*del_wu_a;
+        tl_a = it.tl + alpha*del_tl_a;
+        tu_a = it.tu + alpha*del_tu_a;
+        zl_a = it.zl + alpha*del_zl_a;
+        zu_a = it.zu + alpha*del_zu_a;
+        mu_aff = (sl_a'*wl_a + su_a'*wu_a + tl_a'*zl_a + tu_a'*zu_a)/(2*(n+r));
+
+        % set the centering parameter sigma
+        sigma = (mu_aff/it.mu)^3;
+        
+        % Affine iterate matrices in sparse format
+        n_i = 1:dim.n;
+        n_j = 1:dim.n;
+        r_i = 1:dim.r;
+        r_j = 1:dim.r;
+        Sl_a = sparse(n_i, n_j, del_sl_a, dim.n, dim.n);
+        Su_a = sparse(n_i, n_j, del_su_a, dim.n, dim.n);
+        Tl_a = sparse(r_i, r_j, del_tl_a, dim.r, dim.r);
+        Tu_a = sparse(r_i, r_j, del_tu_a, dim.r, dim.r);
+
+        % calculate new step
+        psil = it.bound_cl*(it.zl - sigma*it.mu*help.Tl1*er + help.Tl1*Tl_a*del_zl_a);
+        psiu = it.bound_cu*(it.zu - sigma*it.mu*help.Tu1*er + help.Tu1*Tu_a*del_zu_a);
+        phil = it.bound_xl*(it.wl - sigma*it.mu*help.Sl1*en + help.Sl1*Sl_a*del_wl_a);
+        phiu = it.bound_xu*(it.wu - sigma*it.mu*help.Su1*en + help.Su1*Su_a*del_wu_a);
+       
+        omega_1 = -nlp.H*it.x -nlp.c + nlp.A'*it.y + nlp.C'*(it.zl-it.zu) + it.bound_xl*it.wl - it.bound_xu*it.wu ...
+            - it.bound_xl*(phil + help.Sl1*help.Wl*help.beta_l) + it.bound_xu*(phiu + help.Su1*help.Wu*help.beta_u);
+        xi = -psil + psiu - it.bound_cl*help.Tl1*help.Zl*help.rho_l + it.bound_cu*help.Tu1*help.Zu*help.rho_u;
+        omega_3 = help.PSI1*xi;
+        omega = [omega_1;omega_2;omega_3];
+        
+        sol = mat\omega;
+
+        % If mat is singular, compute minimum value of 
+        % |mat*del - omega|
+        if any(isnan(sol))
+            sol = lsqminnorm(mat, omega);
+        end
+        % step direction
+        del_x = sol(1:n);
+        del_y = -sol(n+1:n+m);
+        del_sl = it.bound_xl*(del_x + help.beta_l);
+        del_su = it.bound_xu*(-del_x + help.beta_u);
+        del_wl = it.bound_xl*(-phil -help.Sl1*help.Wl*del_sl);
+        del_wu = it.bound_xu*(-phiu - help.Su1*help.Wu*del_su);
     
-            % set the centering parameter sigma
-            sigma = (mu_aff/it.mu)^3;
-            n_i = 1:dim.n;
-            n_j = 1:dim.n;
-            r_i = 1:dim.r;
-            r_j = 1:dim.r;
-            Sl_a = sparse(n_i, n_j, del_sl_a, dim.n, dim.n);
-            Su_a = sparse(n_i, n_j, del_su_a, dim.n, dim.n);
-            Tl_a = sparse(r_i, r_j, del_tl_a, dim.r, dim.r);
-            Tu_a = sparse(r_i, r_j, del_tu_a, dim.r, dim.r);
-            % Zl_a = sparse(r_i, r_j, del_zl_a, dim.r, dim.r);
-            % Zu_a = sparse(r_i, r_j, del_zu_a, dim.r, dim.r);
-            % calculate new step
-             psil = it.bound_cl*(it.zl - sigma*it.mu*help.Tl1*er + help.Tl1*Tl_a*del_zl_a);
-            psiu = it.bound_cu*(it.zu - sigma*it.mu*help.Tu1*er + help.Tu1*Tu_a*del_zu_a);
-            phil = it.bound_xl*(it.wl - sigma*it.mu*help.Sl1*en + help.Sl1*Sl_a*del_wl_a);
-            phiu = it.bound_xu*(it.wu - sigma*it.mu*help.Su1*en + help.Su1*Su_a*del_wu_a);
-           
-            omega_1 = -nlp.H*it.x -nlp.c + nlp.A'*it.y + nlp.C'*(it.zl-it.zu) + it.bound_xl*it.wl - it.bound_xu*it.wu ...
-                - it.bound_xl*(phil + help.Sl1*help.Wl*help.beta_l) + it.bound_xu*(phiu + help.Su1*help.Wu*help.beta_u);
-            xi = -psil + psiu - it.bound_cl*help.Tl1*help.Zl*help.rho_l + it.bound_cu*help.Tu1*help.Zu*help.rho_u;
-            omega_3 = help.PSI1*xi;
-            omega = [omega_1;omega_2;omega_3];
-            
-            sol = mat\omega;
-            if any(isnan(sol))
-                sol = lsqminnorm(mat, omega);
-            end
-                
-            del_x = sol(1:n);
-            del_y = -sol(n+1:n+m);
-            del_sl = it.bound_xl*(del_x + help.beta_l);
-            del_su = it.bound_xu*(-del_x + help.beta_u);
-            del_wl = it.bound_xl*(-phil -help.Sl1*help.Wl*del_sl);
-            del_wu = it.bound_xu*(-phiu - help.Su1*help.Wu*del_su);
+        del_tl = it.bound_cl*(nlp.C*del_x + help.rho_l);
+        del_tu = it.bound_cu*(-nlp.C*del_x + help.rho_u);
+        del_zu = it.bound_cu*(-psiu -help.Tu1*help.Zu*del_tu);
+        del_zl = it.bound_cl*(-psil - help.Tl1*help.Zl*del_tl);
         
-            del_tl = it.bound_cl*(nlp.C*del_x + help.rho_l);
-            del_tu = it.bound_cu*(-nlp.C*del_x + help.rho_u);
-            del_zu = it.bound_cu*(-psiu -help.Tu1*help.Zu*del_tu);
-            del_zl = it.bound_cl*(-psil - help.Tl1*help.Zl*del_tl);
-            
-            % calculate step length alpha
-            step = [del_sl; del_su; del_wl; del_wu; del_tl; del_tu; del_zl; del_zu];
-            curr = [it.sl; it.su; it.wl; it.wu; it.tl; it.tu; it.zl; it.zu];
-            [alpha] = step_length(step, curr, eta);
-            
-            % update iterate
-            it.x = it.x + alpha*del_x;
-            it.y = it.y + alpha*del_y;
-            it.zl = it.zl + alpha*del_zl;
-            it.zu = it.zu + alpha*del_zu;
-            it.wl = it.wl + alpha*del_wl;
-            it.wu = it.wu + alpha*del_wu;
-            it.sl = it.sl + alpha*del_sl;
-            it.su = it.su + alpha*del_su;
-            it.tl = it.tl + alpha*del_tl;
-            it.tu = it.tu + alpha*del_tu;
-            
-            it.mu = (it.sl'*it.wl + it.su'*it.wu + it.tl'*it.zl + it.tu'*it.zu)/(2*(n+r));
+        % calculate step length alpha
+        step = [del_sl; del_su; del_wl; del_wu; del_tl; del_tu; del_zl; del_zu];
+        curr = [it.sl; it.su; it.wl; it.wu; it.tl; it.tu; it.zl; it.zu];
+        [alpha] = step_length(step, curr, eta);
+        
+        % update iterate
+        it.x = it.x + alpha*del_x;
+        it.y = it.y + alpha*del_y;
+        it.zl = it.zl + alpha*del_zl;
+        it.zu = it.zu + alpha*del_zu;
+        it.wl = it.wl + alpha*del_wl;
+        it.wu = it.wu + alpha*del_wu;
+        it.sl = it.sl + alpha*del_sl;
+        it.su = it.su + alpha*del_su;
+        it.tl = it.tl + alpha*del_tl;
+        it.tu = it.tu + alpha*del_tu;
+        
+       % calculate new duality measure
+         it.mu = (it.sl'*it.wl + it.su'*it.wu + it.tl'*it.zl + it.tu'*it.zu)/(2*(n+r));
 
-            help = helpers(dim, nlp, it);
-
-            % obj = cutest_obj(it.x);
-
-            name = genvarname(string(iterations));
-            data.(name) = it_log_qp(iterations, it, nlp, sigma, alpha, help, dim);
-        if it.mu < 1*10^(-15)
+        % update helping variables
+        help = helpers(dim, nlp, it);
+        
+        % Iteration log
+        name = genvarname(string(iterations));
+        data.(name) = it_log_qp(iterations, it, nlp, sigma, alpha, help, dim);
+        con = [data.(name).pri_fea, data.(name).compl, data.(name).dual_fea, it.mu];
+        convergence = max(con);
+        
+        % convergence criterium
+        if convergence < 1*10^(-3)
             data.success = 1;
+            break
+        end
+        % stop criteria for bad iterates
+        if any(isnan(con))
+            data.nan = 1;
             break;
         end
-        if it.mu > 1*10^50
+        if it.mu > 1*10^50 || alpha < 1*10^(-25) || convergence > 1*10^100
             fprintf(1, "Did not converge. \n");
-            data.success = 0;
             break
         end
     end

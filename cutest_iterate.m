@@ -22,5 +22,12 @@ function [nlp] = cutest_iterate(it, nlp, dim,p)
     nlp.H = cutest_sphess(it.x,lambda);
     
     [nlp.obj, nlp.grad] = cutest_obj(it.x);
+    [i,j,v] = find(nlp.A);
+    for k = 1:length(v)
+        if v(k) > -1*10^(-100) && v(k) < 1*10^(-100)
+            v(k) = 0;
+        end
+    end
+    nlp.A = sparse(i,j,v,m,n);
 
 end

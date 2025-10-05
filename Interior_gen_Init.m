@@ -1,12 +1,24 @@
-function [it,nlp,dim] = Interior_gen_Init()%cue)%,p, gamma)
-    
-    % if cue(1)
-        p = cutest_setup;
-    % end
+function [it,nlp,dim, f] = Interior_gen_Init(cue,p)
+% Calculate initial iterate of Interior Point NLP Method
+% Calculate initial problem data nlp
+% struct it contains x, sl,su,tl,tu,y,wl,wu,zl,zu and
+% bound matrices bound_xl, bound_xu, bound_cl, bound_cu
+% struct nlp contains H, obj, xl, xu, cl, cu, A, C
+   
     dim.n = p.n;
     dim.m = p.m;
     dim.r = 0;
-    
+    f = 0;
+    % uncomment if only smaller problems are desired
+    % if dim.n > 20
+    %     f = 1;
+    %     nlp = [];
+    %     it = [];
+    %     fprintf(1, 'n = %i\n', dim.n);
+    %     fprintf(1, 'm = %i\n', dim.m);
+    %     return
+    % end
+
     % compute correct dimensions for m and r
     for i = 1:p.m
         if p.cl(i) || p.cu(i)
@@ -15,22 +27,25 @@ function [it,nlp,dim] = Interior_gen_Init()%cue)%,p, gamma)
         end
     end
     
+    % helping variables
     n = dim.n;
     m = dim.m;
     r = dim.r;
     en = ones(n,1);
     er = ones(r,1);
+    
+    % test for missing constraints
     free = 1;
-   for i=1:n
+    for i=1:n
        if p.bl(i) > -10^3 || p.bu(i) < 10^3
            free = 0;
            continue
        end
-   end
-   if free 
+    end
+    if free 
        p.bl = -10*ones(n,1);
        p.bu = 10*ones(n,1);
-   end
+    end
     
     %Determine which lines of the constraints are inequalities, which
     %equalities
@@ -83,36 +98,37 @@ function [it,nlp,dim] = Interior_gen_Init()%cue)%,p, gamma)
     it.bound_cl = sparse(gen_i, gen_j, index_cl, dim.r,dim.r);
     it.bound_cu = sparse(gen_i, gen_j, index_cu, dim.r,dim.r);
        
-    it.x = sparse(ones(dim.n,1));
-    it.y = sparse(ones(dim.m,1));
+    it.x = sparse(p.x);
+    it.y = sparse(p.v(1:dim.m));
+    if dim.m == 0
+        it.y = zeros(dim.m,1);
+    end
     it.sl = sparse(it.bound_xl*ones(dim.n,1));
     it.su = sparse(it.bound_xu*ones(dim.n,1));
     it.wl = sparse(it.bound_xl*ones(dim.n,1));
     it.wu = sparse(it.bound_xu*ones(dim.n,1));
     it.tl = sparse(it.bound_cl*ones(dim.r,1));
     it.tu = sparse(it.bound_cu*ones(dim.r,1));
-    it.zl = sparse(it.bound_cl*ones(dim.r,1));
-    it.zu = sparse(it.bound_cu*ones(dim.r,1));
+    if dim.r ~= 0
+        it.zl = sparse(it.bound_cl*p.v(dim.m+1:dim.m + dim.r));
+        it.zu = sparse(it.bound_cu*p.v(dim.m+1:dim.m + dim.r));
+    else
+        it.zl = zeros(dim.r,1);
+        it.zu = zeros(dim.r,1);
+    end
 
     it.mu = (it.sl'*it.wl + it.su'*it.wu + it.tl'*it.zl + it.tu'*it.zu)/(2*dim.r+2*dim.n);
     
-    % if cue(1)
-        [nlp] = cutest_iterate(it, nlp, dim,p);
-    % else
-    %     [nlp] = iterate(it,p, nlp, dim);
-    % end
+    [nlp] = cutest_iterate(it, nlp, dim,p);
     [help] = helpers_nlp(dim, nlp, it,p);
-    gamma.reg = 0;
-        % if cue(2)
-            % [gamma] = matrix_factors(help, gamma, dim, nlp);
-        %     Conv = -gamma.con*eye(m);
-        % else
-            Conv = sparse(m,m);
-        % end
-        Hphi = nlp.H + help.PHI + gamma.reg*eye(n);
-
+    if cue
+        [gamma] = matrix_factors(dim, nlp);
+    else
+        gamma = 0;
+    end
+    Hphi = nlp.H + help.PHI + gamma*eye(n);
     mat = [Hphi   nlp.A'  nlp.C';
-           nlp.A   Conv    sparse(dim.m,r);
+           nlp.A   sparse(m,m)    sparse(dim.m,r);
            nlp.C  sparse(r,dim.m)   -help.PSI1];
 
     xi = -it.bound_cl*(it.zl + help.Tl1*help.Zl*help.rho_l) + it.bound_cu*(it.zu + help.Tu1*help.Zu*help.rho_u);
@@ -121,7 +137,7 @@ function [it,nlp,dim] = Interior_gen_Init()%cue)%,p, gamma)
             + it.bound_xu*help.Su1*help.Wu*help.beta_u;
     sol = mat\[nu;kappa;help.PSI1*xi];
     if any(isnan(sol))
-        sol = lsqminnorm(mat, omega);
+        sol = lsqminnorm(mat, [nu;kappa;help.PSI1*xi]);
     end
 
         del_x = sol(1:n);
@@ -152,7 +168,4 @@ function [it,nlp,dim] = Interior_gen_Init()%cue)%,p, gamma)
         it.zl = it.bound_cl*max(abs(it.zl + del_zl),0.1*er);
         it.zu = it.bound_cu*max(abs(it.zu + del_zu),0.1*er);
 
-    % if cue(1)
-        cutest_terminate;
-    % end
 end

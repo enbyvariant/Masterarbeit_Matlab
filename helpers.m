@@ -1,12 +1,17 @@
 function [help] = helpers(dim, nlp, it)
-%   UNTITLED3 Summary of this function goes here
-%   Detailed explanation goes here
-
+%   Helpers returns helping variables for the equation system in help
+%   help contains vectors beta_l, beta_u, rho_l, rho_u, 
+%   and matrices in sparse format
+%   PHI, PSI^-1, Sl^-1, Su^-1, Tl^-1, Tu^-1, Wl, Wu, Zl and Zu
+    
+    % evaluate constraints 
     help.beta_l = it.bound_xl*(it.x - nlp.xl - it.sl);
     help.beta_u = it.bound_xu*(-it.x + nlp.xu - it.su);
     help.rho_l = it.bound_cl*(nlp.C*it.x - nlp.cl - it.tl);
     help.rho_u = it.bound_cu*(-nlp.C*it.x + nlp.cu - it.tu);
-
+    
+    % compute Sl^-1,  Su^-1, Tl^-1, Tu^-1, Wl, Wu, Zl and Zu
+    % in sparse format
     gen_i = 1:dim.n;
     gen_j = 1:dim.n;
     Slv = zeros(dim.n,1);
@@ -49,17 +54,17 @@ function [help] = helpers(dim, nlp, it)
 
     help.Zl = sparse(gen_i, gen_j, it.zl, dim.r, dim.r);
     help.Zu = sparse(gen_i, gen_j, it.zu, dim.r, dim.r);     
-
+    
+    % compute PHI, PSI and PSI^-1 in sparse format
     help.PHI = sparse(it.bound_xl*help.Sl1*help.Wl + it.bound_xu*help.Su1*help.Wu);
     PSI = it.bound_cl*help.Tl1*help.Zl + it.bound_cu*help.Tu1*help.Zu;
     Pv = zeros(dim.r,1);
-        for i = 1:dim.r
-            if PSI(i,i) ~= 0
-                Pv(i) = 1/PSI(i,i);
-            else
-                Pv(i) = 0;
-            end
+    for i = 1:dim.r
+        if PSI(i,i) ~= 0
+            Pv(i) = 1/PSI(i,i);
+        else
+            Pv(i) = 0;
         end
+    end
     help.PSI1 = sparse(gen_i, gen_j, Pv, dim.r, dim.r);
-
 end

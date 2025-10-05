@@ -18,6 +18,10 @@ data.compl_p = full(norm(compl_p));
 data.mu = it.mu;
 data.alpha = full(alpha);
 data.obj = nlp.obj;
+if dim.n == 2
+    data.x1 = it.x(1);
+    data.x2 = it.x(2);
+end
 disp(data);
 
 end

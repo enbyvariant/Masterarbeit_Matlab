@@ -1,63 +1,73 @@
-function [nlp,it, iter, data] = Interior_Points_NLP(max_iter)%, cue)%,p, cue, gamma)
-% Interior Point Method for general NLPs
+function [nlp,it,dim, iter, data, convergence, f] = Interior_Points_NLP(max_iter, cue)
+% Implementation of the Interior Point method for linear
+% problems (LPs)
+% Returns the final iterate it, the number of iterations executed
+% iter, the iteration log data, the final objective, 
+% the last problem data nlp and the final error term convergence
     
-    % Initialization
-    [it,nlp,dim] = Interior_gen_Init();%cue);%,p, gamma);
-    n = dim.n;
-    % if n > 10000
-    %     return
-    % end
-    m = dim.m;
-    r = dim.r;
-    en = ones(n,1);
-    er = ones(r,1);
-
-    eta = .995;
+    % Activate cutest
+    p = cutest_setup();
     
-    % if cue(1)
-        p = cutest_setup();
-    % end
-
-    gamma.reg = 0;
+    % Compute starting point
+    [it,nlp,dim, f] = Interior_gen_Init(cue,p);
+    if f
+        iter = 0;
+        data = [];
+        cutest_terminate;
+        convergence = '-';
+        return
+    end
+    % Initialize return value
+    convergence = -inf;
     iter = 0;
 
-    %data = zeros(max_iter,4);
+    % problem dimensions
+    n = dim.n;
+    m = dim.m;
+    r = dim.r;
+    % helping variables
+    en = ones(n,1);
+    er = ones(r,1);
+    eta = .995;
+    
+    data.success = 0;
     help = helpers_nlp(dim, nlp, it);
-
+    
+    % iteration log for the starting point
     name = genvarname(string(iter));
-    data.(name) = it_log_nlp(iter, it, nlp, 0, 'n.a.', help, dim);
+    data.(name) = it_log_nlp(iter, it, nlp, 0, 0, help, dim);
+    con = [data.(name).pri_fea, data.(name).dual_fea, it.mu, data.(name).compl];
+    if any(isnan(con))
+        convergence = max(con);
+        data.nan = 1;
+        cutest_terminate;
+        return;
+    end
+    data.nan = 0;
     
     while 1
+        % maximum iterations reached
         if iter >= max_iter
             break
         else
             iter = iter + 1;
         end
 
-
         % duality measure
         it.mu = (it.sl'*it.wl + it.su'*it.wu + it.tl'*it.zl + it.tu'*it.zu)/(2*n + 2*r);
-        if it.mu < 10^(-12)
-            break
-        end
     
-        % calculate affine step
-        % if cue(1)
-            [nlp] = cutest_iterate(it, nlp, dim,p);
-        % else
-        %     [nlp] = iterate(it,p, nlp, dim);
-        % end
+        % update NLP data
+        [nlp] = cutest_iterate(it, nlp, dim,p);
+        
+        % calculate convexification factor
+        if cue
+            [gamma] = matrix_factors(dim, nlp);
+        else
+            gamma = 0;
+        end
 
-
-        %data(iter, :) = [iter nlp.obj it.x(1) it.mu];
-
-        % if cue(2)
-            [gamma] = matrix_factors(help, gamma, dim, nlp);
-        %     Conv = -gamma.con*eye(m);
-        % else
-            Conv = sparse(m,m);
-        % end
-        Hphi = nlp.H + help.PHI+ gamma.reg*eye(n);
+        Conv = sparse(m,m);
+        Hphi = nlp.H + help.PHI+ gamma*eye(n);
 
         mat = [Hphi   nlp.A'  nlp.C';
              nlp.A   Conv    sparse(m,r);
@@ -75,7 +85,6 @@ function [nlp,it, iter, data] = Interior_Points_NLP(max_iter)%, cue)%,p, cue, ga
             sol = lsqminnorm(mat,omega);
         end
         del_x = sol(1:n);
-
         del_sl = it.bound_xl*(del_x + help.beta_l);
         del_su = it.bound_xu*(-del_x + help.beta_u);
         del_wl = it.bound_xl*(-it.wl -help.Sl1*help.Wl*del_sl);
@@ -151,7 +160,6 @@ function [nlp,it, iter, data] = Interior_Points_NLP(max_iter)%, cue)%,p, cue, ga
 
         % compute new iterate
         it.x = it.x + alpha*del_x;
-        %disp(it.x)
         it.y = it.y + alpha*del_y;
         it.sl = it.sl + alpha*del_sl;
         it.su = it.su +alpha*del_su;
@@ -165,12 +173,26 @@ function [nlp,it, iter, data] = Interior_Points_NLP(max_iter)%, cue)%,p, cue, ga
         [help] = helpers_nlp(dim, nlp, it,p);
         name = genvarname(string(iter));
         data.(name) = it_log_nlp(iter, it, nlp, sigma, alpha, help, dim);
+        con = [data.(name).pri_fea, data.(name).dual_fea, it.mu, data.(name).compl];
+        convergence = max(con);
 
+            if convergence < 5*10^(-2)% && data.(name).compl < 1*10^-2
+                data.success = 1;
+                break
+            end
+            if any(isnan(con))
+                data.nan = 1;
+                break;
+            end
+        % if it.mu < 5*10^(-10)
+        %     data.success = 1;
+        %     break;
+        % end
+        if any([con data.(name).compl]> 1*10^55)  || alpha < 1*10^(-25) 
+            fprintf(1, "Did not converge. \n");
+            break
+        end
     end
-    % data(iter, :) = [iter nlp.obj it.x(1) it.mu];
-
-    % if cue(1)
         cutest_terminate;
-    % end
 
 end

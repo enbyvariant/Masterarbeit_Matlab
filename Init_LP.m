@@ -1,13 +1,19 @@
 function [it] = Init_LP(nlp,dim)
-%
-% 
-    % Initial values
+% Calculate initial iterate of Interior Point LP Method 
+% struct it contains x, sl,su,tl,tu,y,wl,wu,zl,zu and
+% bound matrices bound_xl, bound_xu, bound_cl, bound_cu
+
+    % problem dimension
     n = dim.n;
     m = dim.m;
     r = dim.r;
+
+    %helping variables
     en = ones(n,1);
     er = ones(r,1);
     
+    % detect missing constraints
+    % compute bound matrices in sparse format
     index_l = ones(1,n);
     index_u = ones(1,n);
     wl = ones(n,1);
@@ -29,7 +35,6 @@ function [it] = Init_LP(nlp,dim)
     it.bound_xl = sparse(index_l, index_l, ones(size(index_l)), n, n);
     it.bound_xu = sparse(index_u, index_u, ones(size(index_u)), n, n);
 
-    
     index_cl = ones(1,r);
     index_cu = ones(1,r);
     zl = ones(r,1);
@@ -51,6 +56,7 @@ function [it] = Init_LP(nlp,dim)
     it.bound_cl = sparse(index_cl, index_cl, ones(size(index_cl)), r, r);
     it.bound_cu = sparse(index_cu, index_cu, ones(size(index_cu)), r, r);
     
+    % construct matrices with canceled lines for the missing constraints
     n_i = 1:n;
     r_i = 1:r;
     I_n = sparse(n_i, n_i,ones(n,1));
@@ -67,7 +73,7 @@ function [it] = Init_LP(nlp,dim)
         -nlp.C(nlp.index_cu,:)   sparse(r_u,n_l)                       sparse(r_u,n_u)            sparse(r_u,r_l) -I_r(nlp.index_cu,nlp.index_cu)
         ];
 
-    % Compute starting point
+    % Compute starting point for primal variables
     vector = [nlp.b; nlp.xl(nlp.index_xl); nlp.xu(nlp.index_xu); nlp.cl(nlp.index_cl); nlp.cu(nlp.index_cu)];
     sol = (M*M'\vector);
     a_prim = M' * sol;
@@ -77,12 +83,14 @@ function [it] = Init_LP(nlp,dim)
     tl = it.bound_cl*(nlp.C*x - nlp.cl);
     tu = it.bound_cu*(-nlp.C*x + nlp.cu);
     
+    % Compute starting point for dual variables
     N = [nlp.A' eye(n) nlp.C'];
     a_dual = N' * (N*N'\nlp.c);
     y = a_dual(1:m);
     wl = a_dual(m+1:m+n);
     wu = zeros(n,1);
-
+    
+    % assign Lagrange multipliers for real constraints
     for i =1:r
         if ismember(i,nlp.index_cl)
             zl(i) = a_dual(m+n+i);
@@ -93,6 +101,7 @@ function [it] = Init_LP(nlp,dim)
         end
     end
     
+    % ensure positivity
     delta_pri = 3/2*max([-sl;-su;-tl;-tu;0.01]);
     delta_dual = 3/2*max([-wl;-wu;-zl;-zu; 0.01]);
     
@@ -104,7 +113,8 @@ function [it] = Init_LP(nlp,dim)
     wu = it.bound_xu*(wu + delta_dual * en);
     zl = it.bound_cl*(zl + delta_dual * er);
     zu = it.bound_cu*(zu + delta_dual * er);
-
+    
+    % improve centrality
     delta_pri = 1/2*(sl' * wl + su'*wu + tl'*zl + tu'*zu)/(en' * wl + en'*wu + er'*zl + er'*zu);
     delta_dual = 1/2*(sl' * wl + su'*wu + tl'*zl + tu'*zu)/(en' * sl + en'*su + er'*tl + er'*tu);
 
@@ -150,7 +160,8 @@ function [it] = Init_LP(nlp,dim)
     if any(isnan(y))
         y = ones(m,1);
     end
-
+    
+    % put data into struct it
     it.x = x;
     it.sl = sl;
     it.su = su;
@@ -161,6 +172,7 @@ function [it] = Init_LP(nlp,dim)
     it.wu = wu;
     it.zl = zl;
     it.zu = zu;
-    it.mu = (it.sl'*it.wl + it.su'*it.wu + it.tl'*it.zl + it.tu'*it.zu)/(2*n + 2*r);
 
+    % duality measure
+    it.mu = (it.sl'*it.wl + it.su'*it.wu + it.tl'*it.zl + it.tu'*it.zu)/(2*n + 2*r);
 end

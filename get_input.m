@@ -1,12 +1,19 @@
 function [nlp, dim, f] = get_input()
-    
+% computes the relevant problem data saved in nlp and dim
+% nlp has fields H, c, A, b, C ,cl, cu, xl, xu
+% dim has fields n, m and r
+
+    % activate cutest
     prob = cutest_setup();
+
+    % save dimensions n, m, r
     dim.n = prob.n;
     dim.m = prob.m;
     dim.r = 0;
     
     f = 0;
-    % if (dim.n < 1000) || (dim.n > 7000 || dim.m > 7000)
+    % uncomment if only problems of certain size are requested
+    % if dim.n > 1000
     %     f = 1;
     %     nlp = [];
     %     fprintf(1, 'n = %i\n', dim.n);
@@ -29,8 +36,8 @@ function [nlp, dim, f] = get_input()
     xl = sparse(prob.bl);
     xu = sparse(prob.bu);
     H = cutest_sphess(prob.x, prob.v);
-
-    c = zeros(dim.n,1);
+    
+    % compute the constraints in sparse format
     nz = 0;
     nz_i = zeros(dim.n,1);
     for k = 1:dim.n
@@ -53,9 +60,10 @@ function [nlp, dim, f] = get_input()
         l = l + nz_i(k);
     end
 
-
     M = sparse(i,j,v, dim.m + dim.r,dim.n);
 
+    % compute c using cutest calls
+    c = zeros(dim.n,1);
     for i = 1:dim.n
         c(i) = cutest_obj([zeros(i-1,1); 1; zeros(dim.n-i,1)])- 1/2*H(i,i)-c_0;
     end
@@ -77,7 +85,9 @@ function [nlp, dim, f] = get_input()
     Av = zeros(nz);
     nz_A = 0;
     nz_C = 0;
-
+    
+    % sort constraints into inequality and equality constraints
+    % yielding A, b, C, cl and cu
     for k = 1:nz(1)
         if prob.cl(i(k)) || prob.cu(i(k))
             Ci(k) = i(k) - dim.m;
@@ -127,32 +137,35 @@ function [nlp, dim, f] = get_input()
              
 
     for j = 1:dim.m+dim.r
-        % constraint of the form Cx <= cu
-        if prob.cl(j) < - 10^7
-            n_1 = n_1 + 1;
-            cu(n_1) = const(j);
-            cl(n_1) = -10^7;
-        end
-
-        % constraint of the form cl <= Cx
-        if prob.cu(j) > 10^7
-            n_1 = n_1 + 1;
-            cl(n_1) = const(j);
-            cu(n_1) = 10^7;
-        end
-
         % constraint of the form Ax = b
         if ~prob.cl(j) && ~prob.cu(j)
             n_2 = n_2 + 1;
             b(n_2) = const(j);
-        end
-    end
+        else
+        % constraint of the form Cx <= cu
+            if prob.cl(j) < - 10^7 || prob.cu(j) == 0
+                n_1 = n_1 + 1;
+                cu(n_1) = const(j);
+                cl(n_1) = -10^7;
+            end
 
+            % constraint of the form cl <= Cx
+            if prob.cu(j) > 10^7 || prob.cl(j) == 0
+                n_1 = n_1 + 1;
+                cl(n_1) = const(j);
+                cu(n_1) = 10^7;
+            end
+        end
+
+    end
+    
+    % find missing constraints
     nlp.index_xl = find(xl > -10^7);
     nlp.index_xu = find(xu < 10^7);
     nlp.index_cl = find(cl > -10^7);
     nlp.index_cu = find(cu < 10^7);
     
+    % put all data into struct nlp
     nlp.H = H;
     nlp.c = sparse(c);
     nlp.c_0 = c_0;
